@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euo pipefail
+
+GIT_REF='main'
+
+PACKAGES_FILE="$1"
+RESULT_FILE="$2"
+
+git remote -v
+
+set +e
+OLD_PACKAGES="$(git show "origin/${GIT_REF}:${PACKAGES_FILE}")"
+err="$?"
+set -e
+
+# 128 indicates the file does not exist at the provided git reference. This may be the case when
+# creating a new index, for example.
+if [[ $err -eq 128 ]]; then
+    echo "[DEBUG] ${PACKAGES_FILE} doesn't exist at ${GIT_REF} git reference, using empty file" >&2
+    OLD_PACKAGES=""
+fi
+
+NEW_PACKAGES="$(comm -13 <(<<<"${OLD_PACKAGES}" sort -u) <(< "${PACKAGES_FILE}" sort -u))"
+
+echo "Packages to build:"
+echo "${NEW_PACKAGES}"
+
+NEW_PACKAGES_JSON='[]'
+if [[ -n "$NEW_PACKAGES" ]]; then
+    # Turn the output into a JSON Array. `sed` is used to avoid a dependency on `jq`.
+    NEW_PACKAGES_JSON="$(<<< "${NEW_PACKAGES}" sed -e ':a;N;$!ba;s/\n/", "/g' | sed -e 's/^/\["/' -e 's/$/"\]/')"
+fi
+
+echo "${NEW_PACKAGES_JSON}" | tee "${RESULT_FILE}"

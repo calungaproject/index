@@ -104,6 +104,8 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.revision)
+        - name: depth
+          value: "0"
         - name: ociStorage
           value: $(params.output-image).git
         - name: ociArtifactExpiresAfter
@@ -127,6 +129,57 @@ spec:
       workspaces:
         - name: basic-auth
           workspace: git-auth
+    - name: identify-packages
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: SCRIPT
+          # SCRIPT_OUTPUT_ARRAY env var is injected by the run-script Task
+          value: |
+            ./hack/identify-packages packages.txt "${SCRIPT_OUTPUT_ARRAY}"
+        - name: SCRIPT_RUNNER_IMAGE
+          value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9:v1.19.3
+        - name: HERMETIC
+          value: "true"
+        - name: ociStorage
+          value: $(params.output-image).pkgs
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
+      taskRef:
+        params:
+          - name: name
+            value: run-script-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:f9da978968a256edbefdbe615ae2fdc2652f81e9ea325a07e2e1c1fa45f52b9b
+          - name: kind
+            value: task
+        resolver: bundles
+    - name: build-wheels
+      params:
+        # TODO: We probably want identify-packages to create a file, and we can use that as the
+        # input for build-wheels. Must change the build-wheels script to accept a packages file
+        # instead.
+        - name: PACKAGES
+          value: $(tasks.identify-packages.results.SCRIPT_OUTPUT_ARRAY)
+        - name: IMAGE
+          value: $(params.output-image).wheel
+        - name: IMAGE_EXPIRES_AFTER
+          value: $(params.image-expires-after)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: FROMAGER_IMAGE
+          value: quay.io/redhat-user-workloads/calunga-tenant/plumbing-builder:2d1315d872c465082597f8177575aa9ff7d5dc8f
+      runAfter:
+        - identify-packages
+      taskRef:
+        params:
+          - name: url
+            value: https://github.com/calungaproject/plumbing.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/build-python-wheels-oci-ta.yaml
+        resolver: git
     - name: prefetch-dependencies
       params:
         - name: input
