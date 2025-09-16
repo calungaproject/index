@@ -130,7 +130,7 @@ spec:
         - name: SCRIPT
           # SCRIPT_OUTPUT_ARRAY env var is injected by the run-script Task
           value: |
-            ./hack/identify-packages packages.txt "${SCRIPT_OUTPUT_ARRAY}"
+            ./hack/identify-packages packages.txt '{{target_branch}}' "${SCRIPT_OUTPUT_ARRAY}"
         - name: SCRIPT_RUNNER_IMAGE
           value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9:v1.19.3
         - name: HERMETIC
