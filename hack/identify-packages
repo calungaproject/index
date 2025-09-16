@@ -4,6 +4,7 @@ set -euo pipefail
 PACKAGES_FILE="$1"
 REVISION="$2"
 RESULT_FILE="$3"
+EMPTY_RESULT_FILE="$4"
 
 echo "[DEBUG] PACKAGES_FILE=${PACKAGES_FILE} REVISION=${REVISION} RESULT_FILE=${RESULT_FILE}" >&2
 
@@ -33,3 +34,10 @@ if [[ -n "$NEW_PACKAGES" ]]; then
 fi
 
 echo "${NEW_PACKAGES_JSON}" | tee "${RESULT_FILE}"
+
+if [[ "${NEW_PACKAGES_JSON}" == "[]" ]]; then
+    printf 'no-packages' | tee "${EMPTY_RESULT_FILE}"
+else
+    printf 'has-packages' | tee "${EMPTY_RESULT_FILE}"
+fi
+echo
