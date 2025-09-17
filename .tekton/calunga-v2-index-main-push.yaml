@@ -25,6 +25,8 @@ spec:
       value: quay.io/redhat-user-workloads/calunga-tenant/calunga-v2-index-main:{{revision}}
     - name: dockerfile
       value: Containerfile
+    - name: prev-packages-ref
+      value: 'HEAD^'
   taskRunTemplate:
     serviceAccountName: build-pipeline-calunga-v2-index-main
   workspaces:

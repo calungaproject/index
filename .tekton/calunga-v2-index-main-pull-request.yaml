@@ -28,6 +28,8 @@ spec:
       value: 5d
     - name: dockerfile
       value: Containerfile
+    - name: prev-packages-ref
+      value: '{{target_branch}}'
   taskRunTemplate:
     serviceAccountName: build-pipeline-calunga-v2-index-main
   workspaces:

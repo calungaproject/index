@@ -63,6 +63,9 @@ spec:
       description: Whether to enable privileged mode, should be used only with remote VMs
       name: privileged-nested
       type: string
+    - description: Git ref to use for comparing packages.txt file
+      name: prev-packages-ref
+      type: string
   results:
     - description: ""
       name: IMAGE_URL
@@ -130,7 +133,7 @@ spec:
         - name: SCRIPT
           # SCRIPT_OUTPUT_ARRAY and SCRIPT_OUTPUT env vars are injected by the run-script Task
           value: |
-            ./hack/identify-packages packages.txt '{{target_branch}}' "${SCRIPT_OUTPUT_ARRAY}" "${SCRIPT_OUTPUT}"
+            ./hack/identify-packages packages.txt '$(params.prev-packages-ref)' "${SCRIPT_OUTPUT_ARRAY}" "${SCRIPT_OUTPUT}"
         - name: SCRIPT_RUNNER_IMAGE
           value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9:v1.19.3
         - name: HERMETIC
