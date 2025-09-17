@@ -100,8 +100,8 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.revision)
-        - name: depth
-          value: "0"
+        - name: fetchTags
+          value: "true"
         - name: ociStorage
           value: $(params.output-image).git
         - name: ociArtifactExpiresAfter
@@ -128,9 +128,9 @@ spec:
         - name: SOURCE_ARTIFACT
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: SCRIPT
-          # SCRIPT_OUTPUT_ARRAY env var is injected by the run-script Task
+          # SCRIPT_OUTPUT_ARRAY and SCRIPT_OUTPUT env vars are injected by the run-script Task
           value: |
-            ./hack/identify-packages packages.txt "${SCRIPT_OUTPUT_ARRAY}"
+            ./hack/identify-packages packages.txt '{{target_branch}}' "${SCRIPT_OUTPUT_ARRAY}" "${SCRIPT_OUTPUT}"
         - name: SCRIPT_RUNNER_IMAGE
           value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9:v1.19.3
         - name: HERMETIC
@@ -172,6 +172,10 @@ spec:
           - name: pathInRepo
             value: tasks/build-python-wheels-oci-ta.yaml
         resolver: git
+      when:
+        - input: "$(tasks.identify-packages.results.SCRIPT_OUTPUT)"
+          operator: in
+          values: ["has-packages"]
     - name: sast-snyk-check
       params:
         - name: image-digest

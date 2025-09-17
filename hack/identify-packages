@@ -1,22 +1,24 @@
 #!/bin/bash
 set -euo pipefail
 
-GIT_REF='main'
-
 PACKAGES_FILE="$1"
-RESULT_FILE="$2"
+REVISION="$2"
+RESULT_FILE="$3"
+EMPTY_RESULT_FILE="$4"
+
+echo "[DEBUG] PACKAGES_FILE=${PACKAGES_FILE} REVISION=${REVISION} RESULT_FILE=${RESULT_FILE}" >&2
 
 git remote -v
 
 set +e
-OLD_PACKAGES="$(git show "origin/${GIT_REF}:${PACKAGES_FILE}")"
+OLD_PACKAGES="$(git show "origin/${REVISION}:${PACKAGES_FILE}")"
 err="$?"
 set -e
 
 # 128 indicates the file does not exist at the provided git reference. This may be the case when
 # creating a new index, for example.
 if [[ $err -eq 128 ]]; then
-    echo "[DEBUG] ${PACKAGES_FILE} doesn't exist at ${GIT_REF} git reference, using empty file" >&2
+    echo "[DEBUG] ${PACKAGES_FILE} doesn't exist at ${REVISION} git reference, using empty file" >&2
     OLD_PACKAGES=""
 fi
 
@@ -32,3 +34,10 @@ if [[ -n "$NEW_PACKAGES" ]]; then
 fi
 
 echo "${NEW_PACKAGES_JSON}" | tee "${RESULT_FILE}"
+
+if [[ "${NEW_PACKAGES_JSON}" == "[]" ]]; then
+    printf 'no-packages' | tee "${EMPTY_RESULT_FILE}"
+else
+    printf 'has-packages' | tee "${EMPTY_RESULT_FILE}"
+fi
+echo
