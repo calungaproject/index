@@ -172,6 +172,8 @@ spec:
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: FROMAGER_IMAGE
           value: quay.io/redhat-user-workloads/calunga-tenant/plumbing-builder:2d1315d872c465082597f8177575aa9ff7d5dc8f
+        - name: WHEEL_SERVER_URL
+          value: https://console.redhat.com/api/pulp-content/public-calunga/mypypi/simple
       taskRef:
         params:
           - name: url
