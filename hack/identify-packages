@@ -11,7 +11,7 @@ echo "[DEBUG] PACKAGES_FILE=${PACKAGES_FILE} REVISION=${REVISION} RESULT_FILE=${
 git remote -v
 
 set +e
-OLD_PACKAGES="$(git show "origin/${REVISION}:${PACKAGES_FILE}")"
+OLD_PACKAGES="$(git show "${REVISION}:${PACKAGES_FILE}")"
 err="$?"
 set -e
 
