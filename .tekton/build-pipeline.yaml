@@ -66,6 +66,10 @@ spec:
     - description: Git ref to use for comparing packages.txt file
       name: prev-packages-ref
       type: string
+    - default: "1"
+      descripton: Git clone depth
+      name: git-clone-depth
+      type: string
   results:
     - description: ""
       name: IMAGE_URL
@@ -105,6 +109,8 @@ spec:
           value: $(params.revision)
         - name: fetchTags
           value: "true"
+        - name: depth
+          value: $(params.git-clone-depth)
         - name: ociStorage
           value: $(params.output-image).git
         - name: ociArtifactExpiresAfter
