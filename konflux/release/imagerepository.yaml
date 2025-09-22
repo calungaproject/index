@@ -1,0 +1,9 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ImageRepository
+metadata:
+  name: release-artifacts
+spec:
+  image:
+    name: calunga-tenant/release-artifacts
+    visibility: public

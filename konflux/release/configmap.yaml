@@ -1,0 +1,7 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-pipeline-config
+data:
+  ociStorage: quay.io/redhat-user-workloads/calunga-tenant/release-artifacts

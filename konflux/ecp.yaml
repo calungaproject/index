@@ -1,0 +1,62 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: EnterpriseContractPolicy
+metadata:
+  name: calunga
+spec:
+  description: 'Includes the full set of rules and policies required internally by Red Hat when building Red Hat products. Source: https://github.com/enterprise-contract/config/blob/main/redhat/policy.yaml'
+  name: Red Hat
+  publicKey: k8s://openshift-pipelines/public-key
+  sources:
+    - config:
+        exclude:
+          # TODO: Fix these two
+          - pre_build_script_task.pre_build_script_task_runner_image_in_sbom
+          - tasks.pinned_task_refs
+          # TODO: This probably doesn't make sense when using fromager
+          - tasks.required_tasks_found:prefetch-dependencies
+          # TODO: Use a proper base image.
+          - base_image_registries.base_image_permitted:quay.io/lucarval/calunga-builder
+          # TODO: Are these labels required?
+          - labels.required_labels
+          # TODO: Consider removing this task.
+          - test.no_erred_tests:ecosystem-cert-preflight-checks
+          # TODO: Setup snyk.
+          - test.no_skipped_tests:sast-snyk-check-oci-ta
+          # TODO: Does it make sense to restrict to weekdays?
+          - schedule.weekday_restriction
+          # Does a source container image make sense here? Where would we deploy it? The source
+          # for the package itself is released to the python index. However, the source of its
+          # dependencies are not. Should it go somewhere?
+          - source_image.exists
+          - tasks.required_tasks_found:source-build-oci-ta
+          # TODO: We build oci artifacts.
+          - base_image_registries.base_image_info_found
+          # TODO: CVE scanner on the built wheel?
+          - cve.cve_results_found
+          # TODO: The SBOM is embedded in the wheel (or, rather, it will be there eventually)
+          - sbom.found
+          # TODO: Do sast and other checks still make sense?
+          - tasks.required_tasks_found:sast-unicode-check-oci-ta
+          - tasks.required_tasks_found:clair-scan
+          - tasks.required_tasks_found:clamav-scan
+          - tasks.required_tasks_found:rpms-signature-scan
+          - tasks.required_tasks_found:sast-shell-check-oci-ta
+          - tasks.required_tasks_found:sast-snyk-check-oci-ta
+          # TODO: init task is kind of useless.
+          - tasks.required_tasks_found:init
+          # TODO: No tests are executed during the build.
+          - test.test_data_found
+          # TODO: Need to make sure our build task becomes trusted.
+          - trusted_task.trusted
+          - slsa_build_scripted_build.image_built_by_trusted_task
+          # TODO: OCI artifacts don't have labels.
+          - labels
+        include:
+          - '@redhat'
+      data:
+        - github.com/release-engineering/rhtap-ec-policy//data
+        - oci::quay.io/konflux-ci/tekton-catalog/data-acceptable-bundles:latest
+      name: Default
+      policy:
+        - oci::quay.io/enterprise-contract/ec-release-policy:konflux

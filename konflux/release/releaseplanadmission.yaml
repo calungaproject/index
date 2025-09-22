@@ -1,0 +1,29 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlanAdmission
+metadata:
+  name: calunga
+  labels:
+    release.appstudio.openshift.io/auto-release: 'true'
+spec:
+  applications:
+    - calunga-v2-index-main
+  data:
+    intention: production
+  origin: calunga-tenant
+  pipeline:
+    pipelineRef:
+      params:
+        - name: url
+          value: 'https://github.com/calungaproject/plumbing.git'
+        - name: revision
+          # TODO: Use the main branch
+          value: add-release-task-pipeline
+        - name: pathInRepo
+          value: pipelines/release.yaml
+      resolver: git
+    serviceAccountName: calunga-release
+    timeouts:
+      pipeline: 2h0m0s
+      tasks: 1h0m0s
+  policy: calunga
