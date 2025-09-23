@@ -170,19 +170,17 @@ spec:
           value: $(params.image-expires-after)
         - name: SOURCE_ARTIFACT
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
-        - name: FROMAGER_IMAGE
-          value: quay.io/redhat-user-workloads/calunga-tenant/plumbing-builder:2d1315d872c465082597f8177575aa9ff7d5dc8f
         - name: WHEEL_SERVER_URL
           value: https://console.redhat.com/api/pulp-content/public-calunga/mypypi/simple
       taskRef:
         params:
-          - name: url
-            value: https://github.com/calungaproject/plumbing.git
-          - name: revision
-            value: main
-          - name: pathInRepo
-            value: tasks/build-python-wheels-oci-ta.yaml
-        resolver: git
+          - name: name
+            value: build-python-wheels-oci-ta
+          - name: bundle
+            value: quay.io/redhat-user-workloads/calunga-tenant/task-build-python-wheels@sha256:f6a57a35970ea9f05a0b5005063ce7b2ce924d6b6377df9e4514c34466538e58
+          - name: kind
+            value: task
+        resolver: bundles
       when:
         - input: "$(tasks.identify-packages.results.SCRIPT_OUTPUT)"
           operator: in
