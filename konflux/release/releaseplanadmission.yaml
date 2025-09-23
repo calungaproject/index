@@ -13,15 +13,14 @@ spec:
   origin: calunga-tenant
   pipeline:
     pipelineRef:
+      resolver: bundles
       params:
-        - name: url
-          value: 'https://github.com/calungaproject/plumbing.git'
-        - name: revision
-          # TODO: Use the main branch
-          value: add-release-task-pipeline
-        - name: pathInRepo
-          value: pipelines/release.yaml
-      resolver: git
+      - name: name
+        value: calunga-push-to-pulp
+      - name: bundle
+        value: quay.io/redhat-user-workloads/calunga-tenant/plumbing-pipelines@sha256:a286ebe216d421afceee32fb2e603ced3a420b23d9262f9e3d4cb1227c403712
+      - name: kind
+        value: pipeline
     serviceAccountName: calunga-release
     timeouts:
       pipeline: 2h0m0s
