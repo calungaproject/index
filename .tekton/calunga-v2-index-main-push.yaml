@@ -37,4 +37,11 @@ spec:
         secretName: '{{ git_auth_secret }}'
   pipelineRef:
     name: build
+  taskRunSpecs:
+    - pipelineTaskName: build-wheels
+      computeResources:
+        requests:
+          memory: 10Gi
+        limits:
+          memory: 10Gi
 status: {}
