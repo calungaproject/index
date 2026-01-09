@@ -37,13 +37,13 @@ jobs:
         id: create-pr
         uses: peter-evans/create-pull-request@v8
         with:
-          commit-message: Automatic update ${{ matrix.update }}
-          title: Automatic update ${{ matrix.update }}
+          commit-message: Automatic build ${{ matrix.update }}
+          title: Automatic build ${{ matrix.update }}
           branch-suffix: short-commit-hash
           delete-branch: true
           base: main
           labels: |
-            automated
+            automated build
       # automerge
       # - name: enable PR automerge
       #   if steps.create-pr.outputs.pull-request-operation == 'created'
