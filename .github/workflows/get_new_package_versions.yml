@@ -1,0 +1,64 @@
+name: Get New Package Versions
+
+# needed for creating PRs
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+
+jobs:
+  # first job will run a script to get a list of packages to update
+  check-for-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      updates: ${{ steps.run-script.outputs.updates }}
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: setup python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: install python deps
+        run: pip install aiohttp
+      - name: run the check-package-updates script
+        id: run-script
+        env:
+          SERVICE_ACCOUNT_PASSWORD: ${{ secrets.SERVICE_ACCOUNT_PASSWORD }}
+          SERVICE_ACCOUNT_USERNAME: ${{ secrets.SERVICE_ACCOUNT_USERNAME }}
+        run: ./hack/check-for-updates.py >> "$GITHUB_OUTPUT"
+
+  create-prs:
+    runs-on: ubuntu-latest
+    needs: check-for-updates
+    strategy:
+      matrix:
+        update: ${{ fromJSON(needs.check-for-updates.outputs.updates) }}
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: update the packages.txt
+        env:
+          update: ${{ matrix.update }}
+        run: ./hack/replace-package "$update"
+      - name: create PR
+        id: create-pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          add-paths: packages.txt
+          commit-message: Automatic build ${{ matrix.update }}
+          title: Automatic build ${{ matrix.update }}
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          base: main
+          labels: |
+            automated build
+      - name: enable PR automerge
+        if: steps.create-pr.outputs.pull-request-operation == 'created'
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          pull-request-number: ${{ steps.create-pr.outputs.pull-request-nubmer }}
+          merge-method: rebase
