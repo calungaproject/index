@@ -16,6 +16,12 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+      - name: setup python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: install python deps
+        run: pip install aiohttp
       - name: run the check-package-updates script
         id: run-script
         run: ./hack/check-package-updates >> "$GITHUB_OUTPUT"
