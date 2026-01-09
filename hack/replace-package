@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+NEW_PKG="$1"
+PKG_NAME="${NEW_PKG%%==*}"
+FILE="packages.txt"
+
+# Replace the line starting with PKG_NAME== with the NEW_PKG string
+sed -i "s|^$PKG_NAME==.*|$NEW_PKG|" "$FILE"
