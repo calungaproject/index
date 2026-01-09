@@ -37,6 +37,7 @@ jobs:
         id: create-pr
         uses: peter-evans/create-pull-request@v8
         with:
+          add-paths: packages.txt
           commit-message: Automatic build ${{ matrix.update }}
           title: Automatic build ${{ matrix.update }}
           branch-suffix: short-commit-hash
