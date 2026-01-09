@@ -33,8 +33,6 @@ jobs:
         env:
           update: ${{ matrix.update }}
         run: ./hack/replace-package "$update"
-      - name: debug git diff
-        run: git diff
       - name: create PR
         id: create-pr
         uses: peter-evans/create-pull-request@v8
