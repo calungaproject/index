@@ -1,0 +1,34 @@
+name: Get New Package Versions
+
+on:
+  # TODO: replace with reasonable cron schedule
+  #schedule:
+  #  - cron: '0 */12 * * *'
+  #  running on every push during testing
+  push
+
+jobs:
+  # first job will run a script to get a list of packages to update
+  check-for-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      updates: ${{ steps.run-script.outputs.updates }}
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: run the check-package-updates script
+        id: run-script
+        run: ./hack/check-package-updates >> "$GITHUB_OUTPUT"
+
+  create-prs:
+    runs-on: ubuntu-latest
+    needs: check-for-updates
+    strategy:
+      matrix:
+        update: ${{ fromJSON(needs.check-for-updates.outputs.updates }}
+    steps:
+      - name: show update
+        env:
+          update: ${{ matrix.update }}
+        run: |
+          echo "$update"
