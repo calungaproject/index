@@ -1,4 +1,5 @@
 #!/bin/bash
 set -euo pipefail
 
-echo 'updates=["urllib3==2.6.0", "numpy==2.3.0"]'
+#echo 'updates=$(python3 check-for-updates.py)'
+echo "updates=['urllib3==2.6.0', 'numpy==2.3.0']"
