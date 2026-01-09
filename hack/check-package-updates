@@ -1,0 +1,4 @@
+#!/bin/bash
+set -euo pipefail
+
+echo 'updates=["urllib3==2.6.0", "numpy==2.3.0"]'
