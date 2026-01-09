@@ -27,8 +27,29 @@ jobs:
       matrix:
         update: ${{ fromJSON(needs.check-for-updates.outputs.updates) }}
     steps:
-      - name: show update
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: update the packages.txt
         env:
           update: ${{ matrix.update }}
-        run: |
-          echo "$update"
+        run: ./hack/replace-package "$update"
+      - name: debug git diff
+        run: git diff
+      - name: create PR
+        id: create-pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: Automatic update ${{ matrix.update }}
+          title: Automatic update ${{ matrix.update }}
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          base: main
+          labels: |
+            automated
+      # automerge
+      # - name: enable PR automerge
+      #   if steps.create-pr.outputs.pull-request-operation == 'created'
+      #   uses: peter-evans/enable-pull-request-automerge@v3
+      #   with:
+      #     pull-request-number: ${{ steps.create-pr.outputs.pull-request-nubmer }}
+      #     merge-method: rebase
