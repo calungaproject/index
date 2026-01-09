@@ -25,7 +25,7 @@ jobs:
     needs: check-for-updates
     strategy:
       matrix:
-        update: ${{ fromJSON(needs.check-for-updates.outputs.updates }}
+        update: ${{ fromJSON(needs.check-for-updates.outputs.updates) }}
     steps:
       - name: show update
         env:
