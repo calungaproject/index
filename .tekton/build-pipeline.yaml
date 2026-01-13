@@ -177,7 +177,7 @@ spec:
         - name: SOURCE_ARTIFACT
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: WHEEL_SERVER_URL
-          value: https://console.redhat.com/api/pulp-content/public-calunga/mypypi/simple
+          value: https://console.redhat.com/api/pulp-content/calunga-prod/main/simple/
       taskRef:
         params:
           - name: name
