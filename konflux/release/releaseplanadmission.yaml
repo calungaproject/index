@@ -18,7 +18,7 @@ spec:
       - name: name
         value: calunga-push-to-pulp
       - name: bundle
-        value: quay.io/redhat-user-workloads/calunga-tenant/plumbing-pipelines@sha256:436b6d25d581a02628921dde833432cfd505dcab58e6336d49dfc5e60b50e8ec
+        value: quay.io/redhat-user-workloads/calunga-tenant/plumbing-pipelines@sha256:4340804c4f44a0bc410db95471c5bd4e26022a6b5e0bf9bbb464e84b4e9b3978
       - name: kind
         value: pipeline
     serviceAccountName: calunga-release
