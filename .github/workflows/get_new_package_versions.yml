@@ -34,6 +34,7 @@ jobs:
   create-prs:
     runs-on: ubuntu-latest
     needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.updates != '[]' }}
     strategy:
       matrix:
         update: ${{ fromJSON(needs.check-for-updates.outputs.updates) }}
