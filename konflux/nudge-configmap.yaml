@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namespace-wide-nudging-renovate-config
+  namespace: calunga-tenant
+data:
+  automerge: "true"
+  automergeType: "pr"
+  platformAutomerge: "true"
+  labels: "konflux-nudge"
