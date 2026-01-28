@@ -62,5 +62,5 @@ jobs:
         if: steps.create-pr.outputs.pull-request-operation == 'created'
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
-          pull-request-number: ${{ steps.create-pr.outputs.pull-request-nubmer }}
+          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
           merge-method: rebase
