@@ -4,3 +4,4 @@ botocore==1.42.36
 urllib3==2.6.3
 typing-extensions==4.15.0
 certifi==2026.1.4
+charset-normalizer==3.4.4
