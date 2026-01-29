@@ -39,7 +39,6 @@ spec:
           # TODO: Do sast and other checks still make sense?
           - tasks.required_tasks_found:sast-unicode-check-oci-ta
           - tasks.required_tasks_found:clair-scan
-          - tasks.required_tasks_found:clamav-scan
           - tasks.required_tasks_found:rpms-signature-scan
           - tasks.required_tasks_found:sast-shell-check-oci-ta
           - tasks.required_tasks_found:sast-snyk-check-oci-ta
