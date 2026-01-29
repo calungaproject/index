@@ -30,6 +30,8 @@ spec:
       value: Containerfile
     - name: prev-packages-ref
       value: 'origin/{{target_branch}}'
+    - name: git-clone-depth
+      value: "0"
   taskRunTemplate:
     serviceAccountName: build-pipeline-calunga-v2-index-main
   workspaces:
