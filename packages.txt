@@ -11,3 +11,4 @@ grpcio-status==1.78.0rc2
 setuptools==80.10.2
 packaging==26.0
 python-dateutil==2.9.0.post0
+s3transfer==0.16.0
