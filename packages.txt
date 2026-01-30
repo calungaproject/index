@@ -144,6 +144,7 @@ shellingham==1.5.4
 alembic==1.18.3
 redis==7.1.0
 tox==4.34.1
+pyyaml==6.0.3
 websocket-client==1.9.0
 pynacl==1.6.2
 coverage==7.13.3
