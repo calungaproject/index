@@ -25,3 +25,4 @@ protobuf==7.34.0rc1
 platformdirs==4.5.1
 jmespath==1.1.0
 markupsafe==3.0.3
+rsa==4.9.1
