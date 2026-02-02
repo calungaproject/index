@@ -48,3 +48,4 @@ googleapis-common-protos==1.72.0
 multidict==6.7.1
 python-dotenv==1.2.1
 yarl==1.22.0
+wrapt==2.1.0
