@@ -17,3 +17,4 @@ s3fs==2026.1.0
 numpy==2.4.2
 fsspec==2026.1.0
 pandas==3.0.0
+pycparser==3.0
