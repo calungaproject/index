@@ -63,3 +63,4 @@ propcache==0.4.1
 pyparsing==3.3.2
 rich==14.3.2
 grpcio==1.78.0rc2
+pathspec==1.0.4
