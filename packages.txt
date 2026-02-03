@@ -82,5 +82,5 @@ pydantic-core==2.41.5
 pendulum==3.2.0
 babel==2.18.0
 apscheduler==3.11.2
-networkx==3.6.1
+networkx==3.6.0
 referencing==0.37.0
