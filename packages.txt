@@ -61,3 +61,4 @@ tomli==2.4.0
 psutil==7.2.2
 propcache==0.4.1
 pyparsing==3.3.2
+rich==14.3.2
