@@ -67,3 +67,4 @@ pathspec==1.0.4
 tomlkit==0.14.0
 oauthlib==3.3.1
 markdown-it-py==4.0.0
+aiohappyeyeballs==2.6.1
