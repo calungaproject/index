@@ -65,3 +65,4 @@ rich==14.3.2
 grpcio==1.78.0rc2
 pathspec==1.0.4
 tomlkit==0.14.0
+oauthlib==3.3.1
