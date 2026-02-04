@@ -1,17 +1,19 @@
 ### Service Account Setup
 
 Create a service account in the [terms-based registry](https://access.redhat.com/terms-based-registry/accounts)
-  . <username> is your ########|service-account-name
-  . <password> is your token. It's important to keep this private.
+
+  . `<username>` is your ########|service-account-name
+  . `<password>` is your token. It's important to keep this private.
 
 ### Setting up your environment
 
 You need to have python3.12 installed on your system. At this time, all wheels in the trusted-libraries index
-are built with python3.12. [Python3.12.12](https://www.python.org/downloads/release/python-31212/)
+are built with [Python3.12.12](https://www.python.org/downloads/release/python-31212/)
 
 You have a few options for setting up your python + pip environment to look at the Trusted Libraries index.
 
 You can create a `pip.conf` file in your environment and `pip` will automatically find it.
+
 You have a few options on where you place it, which will be detailed below.
 
 Here's an example `pip.conf` :
