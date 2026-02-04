@@ -35,7 +35,12 @@ def get_pypi_versions(package_name):
     if not resp.ok:
         print(f"Unexpected status code {resp.status_code} for package {package_name}")
         sys.exit(1)
-    return list(resp.json()["releases"].keys())
+    results = []
+    for release, release_data in resp.json()["releases"].items():
+        if release_data[0]["yanked"]:
+            continue
+        results.append(release)
+    return results
 
 
 def append_new_pkg_version_to_packages_txt(package, version):
