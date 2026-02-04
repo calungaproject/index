@@ -35,12 +35,7 @@ def get_pypi_versions(package_name):
     if not resp.ok:
         print(f"Unexpected status code {resp.status_code} for package {package_name}")
         sys.exit(1)
-    results = []
-    for release, release_data in resp.json()["releases"].items():
-        if release_data[0]["yanked"]:
-            continue
-        results.append(release)
-    return results
+    return resp.json()["releases"]
 
 
 def append_new_pkg_version_to_packages_txt(package, version):
@@ -62,12 +57,27 @@ def main():
         print("Package is already onboarded")
         sys.exit(1)
 
-    pkg_versions = get_pypi_versions(pkg_name)
+    pypi_versions = get_pypi_versions(pkg_name)
+    pkg_versions = list(pypi_versions.keys())
     pkg_versions.sort(key=Version)
-    latest = pkg_versions[-1]
+    latest = None
+    for ver in pkg_versions[::-1]:
+        try:
+            # multiple elements in list = multiple files
+            # yanked value is always consistent among all of them
+            yanked = pypi_versions[ver][0]["yanked"]
+        except (KeyError, IndexError):
+            yanked = True
+        if not yanked:
+            latest = ver
+            break
+    if latest is None:
+        print("Couldn't find any non-yanked version of the package")
+        sys.exit(1)
 
     # ignore everything but the latest version
-    package_data = {"ignored_versions": pkg_versions[:-1]}
+    ignored = [v for v in pkg_versions if v != latest]
+    package_data = {"ignored_versions": ignored}
     save_onboarded_package(pkg_name, package_data)
     append_new_pkg_version_to_packages_txt(pkg_name, latest)
 
