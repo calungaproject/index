@@ -137,3 +137,4 @@ proto-plus==1.27.1
 aiohttp==3.13.3
 openpyxl==3.1.5
 flask-sqlalchemy==3.1.1
+msgpack==1.1.2
