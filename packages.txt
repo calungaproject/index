@@ -140,3 +140,4 @@ flask-sqlalchemy==3.1.1
 msgpack==1.1.2
 mypy-extensions==1.1.0
 decorator==5.2.1
+shellingham==1.5.4
