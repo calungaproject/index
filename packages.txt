@@ -134,3 +134,4 @@ docutils==0.22.4
 starlette==0.52.1
 isodate==0.7.2
 proto-plus==1.27.1
+aiohttp==3.13.3
