@@ -129,3 +129,4 @@ blinker==1.9.0
 flask-cors==6.0.2
 marshmallow==4.2.1
 httpx==0.28.1
+requests-toolbelt==1.0.0
