@@ -202,6 +202,7 @@ mypy==1.19.1
 isort==7.0.0
 flake8==7.3.0
 more-itertools==10.8.0
+sigstore==4.1.0
 trove-classifiers==2026.1.14.14
 appdirs==1.4.4
 httplib2==0.31.2
