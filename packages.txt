@@ -224,6 +224,8 @@ flask-login==0.6.3
 flask-wtf==1.2.2
 flask-limiter==4.1.1
 faker==40.1.2
+anchore==1.1.7
+anchore_syft==1.18.1
 factory-boy==3.3.3
 typer==0.21.1
 fire==0.7.1
