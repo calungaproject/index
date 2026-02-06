@@ -262,3 +262,4 @@ pyyaml==6.0.3
 websocket-client==1.9.0
 pynacl==1.6.2
 coverage==7.13.3
+importlib-metadata==8.7.1
