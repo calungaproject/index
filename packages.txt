@@ -287,3 +287,4 @@ opentelemetry-instrumentation-urllib==0.60b1
 opentelemetry-instrumentation-django==0.60b1
 opentelemetry-instrumentation-flask==0.60b1
 opentelemetry-instrumentation-psycopg2==0.60b1
+anchore-syft==1.18.1
