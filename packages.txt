@@ -26,7 +26,7 @@ setuptools-scm==9.2.2
 installer==0.7.0
 pexpect==4.9.0
 ptyprocess==0.7.0
-wcwidth==0.5.3
+wcwidth==0.6.0
 prompt-toolkit==3.0.52
 traitlets==5.14.3
 executing==2.2.1
