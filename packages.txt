@@ -111,7 +111,7 @@ charset-normalizer==3.4.4
 aiobotocore==3.1.2
 idna==3.11
 grpcio-status==1.78.0
-setuptools==81.0.0
+setuptools==82.0.0
 packaging==26.0
 python-dateutil==2.9.0.post0
 s3transfer==0.16.0
