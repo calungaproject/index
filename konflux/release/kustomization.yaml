@@ -5,7 +5,3 @@ resources:
   - configmap.yaml
   - imagerepository.yaml
   - releaseplan.yaml
-  - releaseplanadmission.yaml
-  - role.yaml
-  - rolebinding.yaml
-  - serviceaccount.yaml
