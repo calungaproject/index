@@ -5,9 +5,8 @@ metadata:
   name: calunga
   labels:
     release.appstudio.openshift.io/auto-release: 'true'
-    release.appstudio.openshift.io/releasePlanAdmission: calunga
     release.appstudio.openshift.io/standing-attribution: 'true'
 spec:
   application: calunga-v2-index-main
   releaseGracePeriodDays: 7
-  target: calunga-tenant
+  target: rhtap-releng-tenant
