@@ -33,7 +33,7 @@ executing==2.2.1
 asttokens==3.0.1
 pure-eval==0.2.3
 stack-data==0.6.3
-parso==0.8.5
+parso==0.8.6
 types-requests==2.32.4.20260107
 types-python-dateutil==2.9.0.20260124
 types-pyyaml==6.0.12.20250915
