@@ -182,7 +182,7 @@ celery==5.6.2
 flask==3.1.2
 rpds-py==0.30.0
 pydantic==2.12.5
-awscli==1.44.32
+awscli==1.44.35
 pillow==12.1.0
 cffi==2.0.0
 cryptography==46.0.4
