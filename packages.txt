@@ -197,7 +197,7 @@ referencing==0.37.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 uvicorn==0.40.0
-fastapi==0.128.5
+fastapi==0.128.3
 marshmallow==4.2.1
 mypy==1.19.1
 isort==7.0.0
