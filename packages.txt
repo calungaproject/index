@@ -229,7 +229,7 @@ flask-login==0.6.3
 flask-wtf==1.2.2
 flask-limiter==4.1.1
 ruff==0.14.0
-faker==40.2.0
+faker==40.3.0
 factory-boy==3.3.3
 typer==0.22.0
 fire==0.7.1
