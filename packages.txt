@@ -43,7 +43,7 @@ types-pytz==2025.2.0.20251108
 types-toml==0.10.8.20240310
 types-setuptools==81.0.0.20260209
 types-urllib3==1.26.25.14
-xmltodict==1.0.2
+xmltodict==1.0.3
 defusedxml==0.8.0rc2
 uritemplate==4.2.0
 portalocker==3.2.0
