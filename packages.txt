@@ -66,7 +66,7 @@ jsonpatch==1.33
 jsonref==1.1.0
 validators==0.35.0
 email-validator==2.3.0
-phonenumbers==9.0.23
+phonenumbers==9.0.24
 toml==0.10.2
 configparser==7.2.0
 configargparse==1.7.1
