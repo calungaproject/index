@@ -124,7 +124,7 @@ six==1.17.0
 s3fs==2026.2.0
 numpy==2.3.5
 fsspec==2026.2.0
-pandas==3.0.0
+pandas==3.0.1
 pycparser==3.0
 attrs==25.4.0
 click==8.3.1
