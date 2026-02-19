@@ -46,7 +46,7 @@ types-python-dateutil==2.9.0.20260124
 types-pyyaml==6.0.12.20250915
 types-pytz==2025.2.0.20251108
 types-toml==0.10.8.20240310
-types-setuptools==82.0.0.20260210
+types-setuptools==81.0.0.20260209
 types-urllib3==1.26.25.14
 xmltodict==1.0.3
 defusedxml==0.8.0rc2
