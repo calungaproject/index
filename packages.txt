@@ -27,7 +27,7 @@ passlib==1.7.4
 python-jose==3.5.0
 pyotp==2.9.0
 distro==1.9.0
-gitdb==4.0.11
+gitdb==4.0.12
 google-pasta==0.2.0
 azure-common==1.1.28
 amqp==5.3.1
