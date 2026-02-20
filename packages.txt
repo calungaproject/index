@@ -1,5 +1,5 @@
 python-decouple==3.8
-cattrs==26.1.0
+cattrs==25.3.0
 dacite==1.9.2
 simplejson==3.20.2
 jsonlines==4.0.0
