@@ -41,7 +41,7 @@ spec:
     - pipelineTaskName: build-wheels
       computeResources:
         requests:
-          memory: 10Gi
+          memory: 20Gi
         limits:
-          memory: 10Gi
+          memory: 20Gi
 status: {}
