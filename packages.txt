@@ -1,4 +1,5 @@
 numpy==2.3.5
+grpcio==1.78.1
 humanfriendly==10.0
 httpcore==1.0.9
 tzdata==2025.3
