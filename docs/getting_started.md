@@ -1,9 +1,15 @@
+### General Info
+
+Trusted Libraries content is currently in Technology Preview. To learn more about this, check out [this resource](https://access.redhat.com/solutions/21101)
+
 ### Service Account Setup
 
 Create a service account in the [terms-based registry](https://access.redhat.com/terms-based-registry/accounts)
 
-  . `<username>` is your ########|service-account-name
-  . `<password>` is your token. It's important to keep this private.
+  `<username>` is your ########|service-account-name
+
+  `<password>` is your token. It's important to keep this private.
+
 
 ### Setting up your environment
 
