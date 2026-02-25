@@ -13,7 +13,7 @@ PYPI_MAX_CONCURRENT_REQUEST = 10
 PULP_MAX_CONCURRENT_REQUEST = 10
 
 PYPI_URL = "https://pypi.org/pypi/{pkg}/json"
-PULP_URL = "https://packages.redhat.com/api/pypi/trusted-libraries/main/pypi/{pkg}/json"
+PULP_URL = "https://packages.redhat.com/api/pypi/public-trusted-libraries/main/pypi/{pkg}/json"
 
 PULP_USERNAME = os.getenv("SERVICE_ACCOUNT_USERNAME")
 PULP_PWD = os.getenv("SERVICE_ACCOUNT_PASSWORD")

@@ -25,7 +25,7 @@ You have a few options on where you place it, which will be detailed below.
 Here's an example `pip.conf` :
 ```
 [global]
-index-url = https://<username>:<password>@packages.redhat.com/trusted-libraries/
+index-url = https://<username>:<password>@packages.redhat.com/trusted-libraries/python/
 ```
 
 You can handle this locally by placing your `pip.conf` into your virtual environment or `venv`: `venv/pip.conf`
