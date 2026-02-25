@@ -255,7 +255,7 @@ flask-appbuilder==5.1.0rc1
 flask-login==0.6.3
 flask-wtf==1.2.2
 flask-limiter==4.1.1
-ruff==0.14.0
+ruff==0.13.3
 faker==40.1.2
 factory-boy==3.3.3
 typer==0.23.2
