@@ -11,7 +11,7 @@ from packaging.version import Version
 LOGGER = logging.getLogger()
 
 PULP_BASE_URL = os.getenv("PULP_BASE_URL", "https://packages.redhat.com")
-PULP_DOMAIN = os.getenv("PULP_DOMAIN", "trusted-libraries")
+PULP_DOMAIN = os.getenv("PULP_DOMAIN", "public-trusted-libraries")
 PULP_CONTENT_API = os.getenv(
     "PULP_CONTENT_API",
     f"{PULP_BASE_URL}/api/pulp/{PULP_DOMAIN}/api/v3/content/python/packages/"
