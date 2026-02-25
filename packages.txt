@@ -54,7 +54,7 @@ flask-cors==6.0.2
 httpx==0.28.1
 requests-toolbelt==1.0.0
 docutils==0.22.4
-starlette==0.52.1
+starlette==1.0.0rc1
 isodate==0.7.2
 proto-plus==1.27.1
 aiohttp==3.13.3
