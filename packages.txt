@@ -15,7 +15,7 @@ yarl==1.22.0
 wrapt==2.1.1
 typing-inspection==0.4.2
 iniconfig==2.3.0
-tqdm==4.67.3
+tqdm==4.67.2
 requests-oauthlib==2.0.0
 frozenlist==1.8.0
 aiosignal==1.4.0
