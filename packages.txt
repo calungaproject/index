@@ -193,7 +193,7 @@ pendulum==3.2.0
 babel==2.18.0
 apscheduler==3.11.2
 networkx==3.6
-dask==2026.1.2
+dask==2026.1.1
 referencing==0.37.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
