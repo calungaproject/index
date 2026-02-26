@@ -205,6 +205,7 @@ isort==8.0.0
 flake8==7.3.0
 ptyprocess==0.7.0
 wcwidth==0.5.3
+pulp-cli==0.38.0
 prompt-toolkit==3.0.52
 traitlets==5.14.3
 executing==2.2.1
