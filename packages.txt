@@ -187,11 +187,11 @@ django==6.0.2
 celery==5.6.2
 flask==3.1.2
 rpds-py==0.30.0
-pydantic==2.13.0b1
-awscli==1.44.31
+pydantic==2.13.0b2
 pillow==12.1.0
 cffi==2.0.0
 pydantic-core==2.42.0
+awscli==1.44.38
 pendulum==3.2.0
 babel==2.18.0
 apscheduler==3.11.2
