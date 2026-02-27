@@ -123,7 +123,7 @@ distro==1.9.0
 gitdb==4.0.12
 azure-common==1.1.28
 amqp==5.3.1
-billiard==4.2.4
+billiard==4.3.0rc1
 vine==5.1.0
 semver==3.0.4
 semantic-version==2.10.0
