@@ -178,6 +178,10 @@ spec:
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: WHEEL_SERVER_URL
           value: https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/
+        - name: PULP_API_BASE_URL
+          value: https://packages.redhat.com/api/pulp/public-trusted-libraries/api/v3/
+        - name: PULP_REPO_ID
+          value: 019aa284-e214-77e7-862c-48d5905cccc6
       taskRef:
         params:
           - name: name
