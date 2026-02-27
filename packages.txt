@@ -249,7 +249,7 @@ pytest-timeout==2.4.0
 pytest-rerunfailures==16.1
 pytest-metadata==3.1.1
 pytest-html==4.2.0
-pytest-env==1.5.0
+pytest-env==1.2.0
 flask-migrate==4.1.0
 flask-appbuilder==5.1.0rc1
 flask-login==0.6.3
