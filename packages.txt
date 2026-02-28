@@ -258,7 +258,7 @@ flask-limiter==4.1.1
 faker==40.5.0
 ruff==0.14.0
 factory-boy==3.3.3
-typer==0.24.1
+typer==0.24.0
 portalocker==3.2.0
 fasteners==0.20
 emoji==2.15.0
