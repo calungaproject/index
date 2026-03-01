@@ -263,7 +263,7 @@ portalocker==3.2.0
 fasteners==0.20
 emoji==2.15.0
 python-multipart==0.0.22
-sse-starlette==3.3.1
+sse-starlette==3.3.2
 yamllint==1.38.0
 setuptools==75.3.4
 packaging==26.0
