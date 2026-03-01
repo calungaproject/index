@@ -6,7 +6,7 @@ pyasn1-modules==0.4.2
 pyjwt==2.11.0
 pytest==9.0.2
 virtualenv==21.0.0
-cryptography==46.0.5
+cryptography==46.0.4
 google-auth==2.49.0.dev0
 google-api-core==2.29.0
 google-pasta==0.2.0
