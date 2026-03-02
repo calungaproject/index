@@ -13,7 +13,7 @@ google-pasta==0.2.0
 bandit==1.9.4
 googleapis-common-protos==1.72.0
 multidict==6.7.1
-python-dotenv==1.2.1
+python-dotenv==1.2.2
 yarl==1.22.0
 wrapt==2.1.0
 typing-inspection==0.4.2
