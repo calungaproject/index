@@ -191,7 +191,7 @@ pydantic==2.13.0b1
 pillow==12.1.0
 cffi==2.0.0
 pydantic-core==2.42.0
-awscli==1.44.33
+awscli==1.44.32
 pendulum==3.2.0
 babel==2.18.0
 apscheduler==3.11.2
