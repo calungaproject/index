@@ -117,7 +117,7 @@ requests==2.32.4
 typing-extensions==4.15.0
 urllib3==2.6.3
 charset-normalizer==3.4.4
-aiobotocore==3.1.2
+aiobotocore==3.1.1
 idna==3.11
 distro==1.9.0
 gitdb==4.0.12
