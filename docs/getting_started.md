@@ -13,6 +13,8 @@ Create a service account in the [terms-based registry](https://access.redhat.com
 
 ### Setting up your environment
 
+To learn more about Trusted Libraries compatibility, check out our [Support Matrices.](support_matrices.md)
+
 You need to have python3.12 installed on your system. At this time, all wheels in the trusted-libraries index
 are built with [Python3.12.12](https://www.python.org/downloads/release/python-31212/)
 
@@ -67,6 +69,7 @@ pip install numpy
 pip install numpy==2.3.5
 pip install -r requirements.txt
 pip install --no-cache-dir -r requirements.txt
+pip install --only-binary=:all: -r requirements.txt
 
 ```
 
