@@ -175,7 +175,7 @@ opentelemetry-distro==0.60b1
 opentelemetry-instrumentation-urllib==0.60b1
 opentelemetry-instrumentation-django==0.60b1
 opentelemetry-instrumentation-flask==0.60b1
-opentelemetry-instrumentation-psycopg2==0.60b1
+opentelemetry-instrumentation-psycopg2==0.61b0
 anchore-syft==1.18.1
 pexpect==4.9.0
 aiohappyeyeballs==2.6.1
