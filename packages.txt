@@ -164,7 +164,7 @@ opentelemetry-util-http==0.60b1
 opentelemetry-exporter-otlp-proto-common==1.39.1
 opentelemetry-instrumentation-requests==0.60b1
 opentelemetry-exporter-otlp==1.39.1
-opentelemetry-exporter-prometheus==0.60b1
+opentelemetry-exporter-prometheus==0.61b0
 opentelemetry-instrumentation-asgi==0.60b1
 opentelemetry-instrumentation-fastapi==0.60b1
 opentelemetry-instrumentation-urllib3==0.60b1
