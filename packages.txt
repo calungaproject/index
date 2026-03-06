@@ -22,7 +22,7 @@ tqdm==4.67.2
 requests-oauthlib==2.0.0
 frozenlist==1.8.0
 aiosignal==1.4.0
-sqlalchemy==2.1.0b1
+sqlalchemy==2.0.48
 greenlet==3.2.5
 tomli==2.4.0
 psutil==7.2.2
