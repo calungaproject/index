@@ -116,7 +116,7 @@ certifi==2026.1.4
 requests==2.32.4
 typing-extensions==4.15.0
 urllib3==2.6.3
-charset-normalizer==3.4.4
+charset-normalizer==3.4.5
 aiobotocore==3.1.2
 idna==3.11
 distro==1.9.0
