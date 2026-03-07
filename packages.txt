@@ -168,7 +168,7 @@ opentelemetry-exporter-prometheus==0.61b0
 opentelemetry-instrumentation-asgi==0.60b1
 opentelemetry-instrumentation-fastapi==0.60b1
 opentelemetry-instrumentation-urllib3==0.61b0
-opentelemetry-instrumentation-wsgi==0.60b1
+opentelemetry-instrumentation-wsgi==0.61b0
 opentelemetry-instrumentation-dbapi==0.60b1
 opentelemetry-instrumentation-logging==0.61b0
 opentelemetry-distro==0.60b1
