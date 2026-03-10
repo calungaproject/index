@@ -75,7 +75,7 @@ websocket-client==1.9.0
 pynacl==1.6.2
 toml==0.10.2
 configparser==7.2.0
-configargparse==1.7.1
+configargparse==1.7.3
 async-timeout==5.0.1
 nest-asyncio==1.6.0
 async-lru==2.2.0
