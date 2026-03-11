@@ -128,7 +128,9 @@ def compile_result(onboarded_pkgs, pkg_releases):
             - pkg_releases[pkg]["pulp"]
             - set(onboarded_pkgs[pkg]["ignored_versions"])
         )
-        results.extend([f"{pkg}=={ver}" for ver in to_build])
+        # results.extend([f"{pkg}=={ver}" for ver in to_build])
+        if to_build:
+            results.append(f"{pkg}=={to_build.pop()}")
     return results
 
 
