@@ -2,7 +2,7 @@ import json
 import sys
 import os
 import requests
-from packaging.version import Version
+from packaging.version import InvalidVersion, Version, parse
 
 ONBOARDED_PKGS_DIR_PATH = "onboarded_packages"
 PACKAGES_TXT_PATH = "packages.txt"
@@ -59,9 +59,20 @@ def main():
 
     pypi_versions = get_pypi_versions(pkg_name)
     pkg_versions = list(pypi_versions.keys())
-    pkg_versions.sort(key=Version)
+
+    # handle non-semver versions
+    semver = []
+    non_semver = []
+    for ver in pkg_versions:
+        try:
+            parse(ver)
+            semver.append(ver)
+        except InvalidVersion:
+            non_semver.append(ver)
+
+    semver.sort(key=Version)
     latest = None
-    for ver in pkg_versions[::-1]:
+    for ver in semver[::-1]:
         try:
             # multiple elements in list = multiple files
             # yanked value is always consistent among all of them
@@ -76,7 +87,7 @@ def main():
         sys.exit(1)
 
     # ignore everything but the latest version
-    ignored = [v for v in pkg_versions if v != latest]
+    ignored = non_semver + [v for v in semver if v != latest]
     package_data = {"ignored_versions": ignored}
     save_onboarded_package(pkg_name, package_data)
     append_new_pkg_version_to_packages_txt(pkg_name, latest)
