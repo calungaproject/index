@@ -99,7 +99,7 @@ python-slugify==8.0.4
 html2text==2025.4.15
 unidecode==1.4.0
 arrow==1.4.0
-croniter==6.1.0
+croniter==6.1.0rc1
 dateparser==1.2.2
 xlrd==2.0.2
 xlsxwriter==3.2.9
