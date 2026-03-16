@@ -18,7 +18,7 @@ jobs:
       updates: ${{ steps.run-script.outputs.updates }}
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: setup python
         uses: actions/setup-python@v6
         with:
@@ -41,7 +41,7 @@ jobs:
         update: ${{ fromJSON(needs.check-for-updates.outputs.updates) }}
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: update the packages.txt
         env:
           update: ${{ matrix.update }}
