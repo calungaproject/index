@@ -78,7 +78,7 @@ configparser==7.2.0
 configargparse==1.7.2
 async-timeout==5.0.1
 nest-asyncio==1.6.0
-async-lru==2.2.0
+async-lru==2.3.0
 aiofiles==25.1.0
 structlog==25.5.0
 loguru==0.7.3
