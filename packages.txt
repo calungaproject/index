@@ -38,7 +38,7 @@ cattrs==25.3.0
 dacite==1.9.2
 simplejson==3.20.2
 jsonlines==4.0.0
-jsonpointer==3.0.0
+jsonpointer==3.1.0
 jsonpatch==1.33
 jsonref==1.1.0
 validators==0.35.0
