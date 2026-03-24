@@ -103,7 +103,7 @@ croniter==6.2.0
 dateparser==1.2.2
 xlrd==2.0.2
 xlsxwriter==3.2.9
-pypdf==6.9.1
+pypdf==6.9.2
 smmap==5.0.3
 tenacity==9.1.2
 backoff==2.2.1
