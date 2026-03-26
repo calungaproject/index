@@ -203,7 +203,7 @@ jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 uvicorn==0.42.0
 fastapi==0.135.2
-marshmallow==4.2.1
+marshmallow==4.2.3
 mypy==1.19.1
 isort==8.0.1
 flake8==7.3.0
