@@ -7,8 +7,8 @@ permissions:
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 */12 * * *'
+#  schedule:
+#    - cron: '0 */12 * * *'
 
 jobs:
   # first job will run a script to get a list of packages to update
