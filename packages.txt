@@ -100,7 +100,7 @@ html2text==2025.4.15
 unidecode==1.4.0
 arrow==1.4.0
 croniter==6.2.0
-dateparser==1.2.2
+dateparser==1.4.0
 xlrd==2.0.2
 xlsxwriter==3.2.9
 pypdf==6.9.2
