@@ -130,11 +130,6 @@ spec:
           - name: kind
             value: task
         resolver: bundles
-      when:
-        - input: $(tasks.init.results.build)
-          operator: in
-          values:
-            - "true"
       workspaces:
         - name: basic-auth
           workspace: git-auth
