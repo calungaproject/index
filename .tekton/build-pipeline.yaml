@@ -178,7 +178,7 @@ spec:
           - name: name
             value: build-python-wheels-oci-ta
           - name: bundle
-            value: quay.io/redhat-user-workloads/calunga-tenant/task-build-python-wheels@sha256:e51dc7f06d8f0ef713f38273d3c8803d10e0ef17c3bc90a73ad5f703d7b5dac4
+            value: quay.io/redhat-user-workloads/calunga-tenant/task-build-python-wheels@sha256:605d689b86c99a093e1df4f39f679c513e68ff12cd1bdb2b6581d3a14ca80f2e
           - name: kind
             value: task
         resolver: bundles
