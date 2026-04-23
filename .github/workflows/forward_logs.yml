@@ -1,0 +1,24 @@
+name: Log Forwarder
+on:
+  workflow_run:
+    workflows: ["Get New Package Versions"]
+    types: [completed]
+
+jobs:
+  upload-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and Send Logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LOGGING_URL: ${{ secrets.LOGGING_URL }}
+          LOGGING_TOKEN: ${{ secrets.LOGGING_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # to account for delays in GH API
+          sleep 10
+          gh run view ${{ github.event.workflow_run.id }} --log --repo ${{ github.repository }} > final.log
+
+          curl -X POST -T final.log "$LOGGING_URL" \
+          -H "Authorization: Splunk $LOGGING_TOKEN"
