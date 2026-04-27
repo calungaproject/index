@@ -18,9 +18,9 @@ jobs:
       updates: ${{ steps.run-script.outputs.updates }}
     steps:
       - name: checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: setup python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.13'
       - name: install python deps
@@ -41,14 +41,14 @@ jobs:
         update: ${{ fromJSON(needs.check-for-updates.outputs.updates) }}
     steps:
       - name: checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: update the packages.txt
         env:
           update: ${{ matrix.update }}
         run: ./hack/replace-package "$update"
       - name: create PR
         id: create-pr
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           add-paths: packages.txt
           commit-message: Automatic build ${{ matrix.update }}
@@ -60,7 +60,7 @@ jobs:
             automated build
       - name: enable PR automerge
         if: steps.create-pr.outputs.pull-request-operation == 'created'
-        uses: peter-evans/enable-pull-request-automerge@v3
+        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d # v3
         with:
           pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
           merge-method: rebase
