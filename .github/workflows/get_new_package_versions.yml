@@ -22,9 +22,9 @@ jobs:
       - name: setup python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: '3.13'
+          python-version: '3.14'
       - name: install python deps
-        run: pip install aiohttp
+        run: pip install --require-hashes -r hack/requirements.txt
       - name: run the check-package-updates script
         id: run-script
         env:
