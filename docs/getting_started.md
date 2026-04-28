@@ -20,6 +20,8 @@ are built with [Python3.12.12](https://www.python.org/downloads/release/python-3
 
 You have a few options for setting up your python + pip environment to look at the Trusted Libraries index.
 
+#### pip
+
 You can create a `pip.conf` file in your environment and `pip` will automatically find it.
 
 You have a few options on where you place it, which will be detailed below.
@@ -38,6 +40,29 @@ You can place it for any user on your computer at `/etc/xdg/pip/pip.conf` or `/e
 
 To read more about this `pip.conf` setup, look [here](https://pip.pypa.io/en/stable/topics/configuration/)
 
+#### uv
+
+If you use `uv` you can configure your `pyproject.toml` to look at the trusted libraries index.
+
+```
+[[tool.uv.index]]
+name = "trusted-libraries"
+url = "https://packages.redhat.com/trusted-libraries/python"
+# use RHTL index as your default index
+default = true
+```
+
+You also need to export your credentials so `uv` can authenticate with the index.
+
+```
+export UV_INDEX_INTERNAL_PROXY_USERNAME=<username>
+export UV_INDEX_INTERNAL_PROXY_PASSWORD=<password>
+```
+
+To read more about `uv` configuration, look [here](https://docs.astral.sh/uv/concepts/indexes/)
+
+#### netrc
+
 Some tools also use `netrc` and you may want to configure the index there.
 
 Sample `~/.netrc`
@@ -49,7 +74,7 @@ For more information on using `netrc` look [here](https://pip.pypa.io/en/stable/
 
 ### Using the index
 
-#### Installing
+#### Installing with pip
 Here are the steps needed to install packages from the index.
 
 Take a look at [Python Packaging User Guide](https://packaging.python.org/en/latest/tutorials/installing-packages/) for more information
@@ -74,4 +99,8 @@ pip install --only-binary=:all: -r requirements.txt
 ```
 
 To learn more about `pip install` go [here](https://pip.pypa.io/en/stable/cli/pip_install/)
+
+#### Installing with uv
+
+To learn more about managing dependencies with `uv` go [here](https://docs.astral.sh/uv/concepts/projects/dependencies/)
 
