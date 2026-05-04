@@ -5,7 +5,6 @@ import requests
 from packaging.version import InvalidVersion, Version, parse
 
 ONBOARDED_PKGS_DIR_PATH = "onboarded_packages"
-PACKAGES_TXT_PATH = "packages.txt"
 
 
 def ensure_dir():
@@ -36,12 +35,6 @@ def get_pypi_versions(package_name):
         print(f"Unexpected status code {resp.status_code} for package {package_name}")
         sys.exit(1)
     return resp.json()["releases"]
-
-
-def append_new_pkg_version_to_packages_txt(package, version):
-    line = f"{package}=={version}"
-    with open(PACKAGES_TXT_PATH, "a") as f:
-        f.write(f"{line}\n")
 
 
 def main():
@@ -88,9 +81,8 @@ def main():
 
     # ignore everything but the latest version
     ignored = non_semver + [v for v in semver if v != latest]
-    package_data = {"ignored_versions": ignored}
+    package_data = {"version": latest, "ignored_versions": ignored}
     save_onboarded_package(pkg_name, package_data)
-    append_new_pkg_version_to_packages_txt(pkg_name, latest)
 
 
 if __name__ == "__main__":

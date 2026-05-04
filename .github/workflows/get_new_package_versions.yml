@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: update the packages.txt
+      - name: update the package version
         env:
           update: ${{ matrix.update }}
         run: ./hack/replace-package "$update"
@@ -50,7 +50,7 @@ jobs:
         id: create-pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
-          add-paths: packages.txt
+          add-paths: onboarded_packages/
           commit-message: Automatic build ${{ matrix.update }}
           title: Automatic build ${{ matrix.update }}
           branch: update-${{ matrix.update }}
