@@ -1,35 +1,55 @@
 #!/bin/bash
 set -euo pipefail
 
-PACKAGES_FILE="$1"
-REVISION="$2"
-RESULT_FILE="$3"
-EMPTY_RESULT_FILE="$4"
+PACKAGES_DIR="onboarded_packages"
+REVISION="$1"
+RESULT_FILE="$2"
+EMPTY_RESULT_FILE="$3"
 
-echo "[DEBUG] PACKAGES_FILE=${PACKAGES_FILE} REVISION=${REVISION} RESULT_FILE=${RESULT_FILE}" >&2
+echo "[DEBUG] REVISION=${REVISION} RESULT_FILE=${RESULT_FILE}" >&2
 
 git remote -v
 
+# Extract the "version" value from a JSON file using grep/sed.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+extract_version() {
+    grep -o '"version": *"[^"]*"' | sed 's/.*"version": *"\([^"]*\)".*/\1/' || true
+}
+
+# Find JSON files that were added or modified compared to the revision
 set +e
-OLD_PACKAGES="$(git show "${REVISION}:${PACKAGES_FILE}")"
+CHANGED_FILES="$(git diff --name-only --diff-filter=AM "${REVISION}" -- "${PACKAGES_DIR}/")"
 err="$?"
 set -e
 
-# 128 indicates the file does not exist at the provided git reference. This may be the case when
-# creating a new index, for example.
-if [[ $err -eq 128 ]]; then
-    echo "[DEBUG] ${PACKAGES_FILE} doesn't exist at ${REVISION} git reference, using empty file" >&2
-    OLD_PACKAGES=""
+if [[ $err -ne 0 ]]; then
+    echo "[DEBUG] git diff failed (exit code ${err}), assuming all packages are new" >&2
+    CHANGED_FILES="$(find "${PACKAGES_DIR}" -name '*.json' -type f)"
 fi
 
-NEW_PACKAGES="$(comm -13 <(<<<"${OLD_PACKAGES}" sort -u) <(< "${PACKAGES_FILE}" sort -u))"
+NEW_PACKAGES=""
+for f in $CHANGED_FILES; do
+    if [[ -f "$f" ]]; then
+        PKG_NAME="$(basename "$f" .json)"
+        CURRENT_VERSION="$(extract_version < "$f")"
+        if [[ -z "$CURRENT_VERSION" ]]; then
+            continue
+        fi
+
+        OLD_VERSION="$(git show "${REVISION}:${f}" 2>/dev/null | extract_version || true)"
+
+        if [[ "$CURRENT_VERSION" != "$OLD_VERSION" ]]; then
+            NEW_PACKAGES="${NEW_PACKAGES}${PKG_NAME}==${CURRENT_VERSION}"$'\n'
+        fi
+    fi
+done
+NEW_PACKAGES="$(echo -n "$NEW_PACKAGES" | sed '/^$/d')"
 
 echo "Packages to build:"
 echo "${NEW_PACKAGES}"
 
 NEW_PACKAGES_JSON='[]'
 if [[ -n "$NEW_PACKAGES" ]]; then
-    # Turn the output into a JSON Array. `sed` is used to avoid a dependency on `jq`.
     NEW_PACKAGES_JSON="$(<<< "${NEW_PACKAGES}" sed -e ':a;N;$!ba;s/\n/", "/g' | sed -e 's/^/\["/' -e 's/$/"\]/')"
 fi
 

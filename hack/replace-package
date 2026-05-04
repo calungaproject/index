@@ -3,7 +3,8 @@ set -euo pipefail
 
 NEW_PKG="$1"
 PKG_NAME="${NEW_PKG%%==*}"
-FILE="packages.txt"
+VERSION="${NEW_PKG##*==}"
+PKG_FILE="onboarded_packages/${PKG_NAME}.json"
 
-# Replace the line starting with PKG_NAME== with the NEW_PKG string
-sed -i "s|^$PKG_NAME==.*|$NEW_PKG|" "$FILE"
+# jq is in the github-action runner
+jq --arg v "$VERSION" '.version = $v' "$PKG_FILE" > "${PKG_FILE}.tmp" && mv "${PKG_FILE}.tmp" "$PKG_FILE"
