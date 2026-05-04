@@ -10,7 +10,7 @@ cryptography==46.0.4
 google-auth==2.49.0.dev0
 google-api-core==2.29.0
 google-pasta==0.2.0
-bandit==1.9.4
+bandit==1.9.3
 googleapis-common-protos==1.73.0
 multidict==6.7.1
 python-dotenv==1.2.2
@@ -70,7 +70,7 @@ shellingham==1.5.4
 alembic==1.18.2
 redis==7.4.0
 tox==4.50.2
-pyyaml==6.0.2
+pyyaml==6.0.1
 websocket-client==1.9.0
 pynacl==1.6.2
 toml==0.10.2
