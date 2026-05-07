@@ -2,7 +2,7 @@
 
 ## Service Account Setup
 
-Create a service account in the [terms-based registry](https://access.redhat.com/terms-based-registry/accounts)
+Create a service account in the [terms-based registry](https://access.redhat.com/terms-based-registry/accounts).
 
   `<username>` is your ########|service-account-name
 
@@ -11,10 +11,10 @@ Create a service account in the [terms-based registry](https://access.redhat.com
 
 ## Setting up your environment
 
-To learn more about Red Hat Trusted Libraries compatibility, check out our [Support Matrices.](support_matrices.md)
+To learn more about Red Hat Trusted Libraries compatibility, check out our [Support Matrices](support_matrices.md).
 
 You need to have python3.12 installed on your system. At this time, all wheels in the trusted-libraries index
-are built with [Python3.12.12](https://www.python.org/downloads/release/python-31212/)
+are built with [Python3.12.12](https://www.python.org/downloads/release/python-31212/).
 
 You have a few options for setting up your python + pip environment to look at the Trusted Libraries index.
 
@@ -36,7 +36,7 @@ You can handle this for your user by putting it at `~/.config/pip/pip.conf`
 
 You can place it for any user on your computer at `/etc/xdg/pip/pip.conf` or `/etc/pip.conf`
 
-To read more about this `pip.conf` setup, look [here](https://pip.pypa.io/en/stable/topics/configuration/)
+To read more about this `pip.conf` setup, look [here](https://pip.pypa.io/en/stable/topics/configuration/).
 
 ### uv
 
@@ -57,7 +57,7 @@ export UV_INDEX_INTERNAL_PROXY_USERNAME=<username>
 export UV_INDEX_INTERNAL_PROXY_PASSWORD=<password>
 ```
 
-To read more about `uv` configuration, look [here](https://docs.astral.sh/uv/concepts/indexes/)
+To read more about `uv` configuration, look [here](https://docs.astral.sh/uv/concepts/indexes/).
 
 ### netrc
 
@@ -68,14 +68,14 @@ Sample `~/.netrc`
 machine packages.redhat.com login <username> password <password>
 ```
 
-For more information on using `netrc` look [here](https://pip.pypa.io/en/stable/topics/authentication/#netrc-support)
+For more information on using `netrc`, look [here](https://pip.pypa.io/en/stable/topics/authentication/#netrc-support).
 
 ## Using the index
 
 ### Installing with pip
 Here are the steps needed to install packages from the index.
 
-Take a look at [Python Packaging User Guide](https://packaging.python.org/en/latest/tutorials/installing-packages/) for more information
+Take a look at [Python Packaging User Guide](https://packaging.python.org/en/latest/tutorials/installing-packages/) for more information.
 
 1. create a virtual environment `venv`.
 
@@ -84,7 +84,7 @@ python3.12 -m venv venv
 source venv/bin/activate
 ```
 
-If you are choosing the local `pip.conf` strategy: `cp my-pip.conf venv/`
+If you are choosing the local `pip.conf` strategy: `cp pip.conf venv/`
 
 Here are some options for installing from the index:
 ```bash
@@ -93,12 +93,25 @@ pip install numpy==2.3.5
 pip install -r requirements.txt
 pip install --no-cache-dir -r requirements.txt
 pip install --only-binary=:all: -r requirements.txt
-
 ```
 
-To learn more about `pip install` go [here](https://pip.pypa.io/en/stable/cli/pip_install/)
+To learn more about `pip install` go [here](https://pip.pypa.io/en/stable/cli/pip_install/).
 
 ### Installing with uv
 
-To learn more about managing dependencies with `uv` go [here](https://docs.astral.sh/uv/concepts/projects/dependencies/)
+To learn more about managing dependencies with `uv`, go [here](https://docs.astral.sh/uv/concepts/projects/dependencies/).
 
+### Provenance Attestation Verification
+
+To learn more about verifying RHTL provenance attestations, check out [this repo on GitHub](https://github.com/redhat-tssc-tmm/trusted-libraries/tree/main/blog/scripts).
+
+### Viewing SBOMs
+
+For python wheels, SBOMs are contained inside the wheel at `<package>-X.Y.Z.dist-info/sboms`.
+Below is a sample script for viewing an SBOM that came from the RHTL index.
+
+```bash
+pip download numpy==2.3.3
+unzip numpy-2.3.3-0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -d extracted
+cat extracted/numpy-2.3.3.dist-info/sboms/redhat.spdx.json
+```
