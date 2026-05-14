@@ -67,7 +67,13 @@ async def _fetch_releases(session, url, pkg, semaphore, auth=None):
                     LOGGER.error(f"Error: {pkg} returned {response.status} from {url}")
                     return None
                 data = await response.json()
-                return set(data.get("releases", {}).keys())
+                releases = data.get("releases", {})
+                # exclude yanked releases
+                releases = {
+                    ver: files for ver, files in releases.items()
+                    if files and any(not f.get("yanked", False) for f in files)
+                }
+                return set(releases.keys())
         except Exception as e:
             LOGGER.error(f"Request failed for {pkg} at {url}: {e}")
             return None
