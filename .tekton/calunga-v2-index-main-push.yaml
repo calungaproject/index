@@ -8,6 +8,9 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"
+    # Each push builds an independent package. Disable snapshot supersession so
+    # concurrent builds don't skip each other's releases.
+    test.appstudio.openshift.io/ignore-supersession: "true"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: calunga-v2-index-main
