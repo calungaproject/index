@@ -5,6 +5,8 @@ import json
 import logging
 import os
 
+from packaging.version import InvalidVersion, parse
+
 LOGGER = logging.getLogger()
 
 ONBOARDED_PKGS_DIR_PATH = "onboarded_packages"
@@ -129,8 +131,17 @@ def compile_result(onboarded_pkgs, pkg_releases):
         if pkg_releases[pkg]["pypi"] is None or pkg_releases[pkg]["pulp"] is None:
             LOGGER.debug(f"Skipping {pkg}")
             continue
+        # ignore pre-release
+        stable_pypi_releases = set()
+        for ver in pkg_releases[pkg]["pypi"]:
+            try:
+                if not parse(ver).is_prerelease:
+                    stable_pypi_releases.add(ver)
+            except InvalidVersion:
+                continue
+
         to_build = (
-            pkg_releases[pkg]["pypi"]
+            stable_pypi_releases
             - pkg_releases[pkg]["pulp"]
             - set(onboarded_pkgs[pkg]["ignored_versions"])
         )
