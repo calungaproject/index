@@ -52,6 +52,10 @@ Requires Pulp credentials and configuration env vars.
 - **Enterprise Contract**: policy config in `konflux/ecp.yaml`
 - **GitHub Actions** (`.github/workflows/get_new_package_versions.yml`): periodic PyPI update checker, creates automated PRs
 
+## Debugging Pipeline Failures
+
+When debugging Konflux pipeline failures (wheel-check failures, build errors, release issues), always consult `.claude/agents/debug-package.md` first. It contains the full diagnostic procedure, including kubearchive commands for retrieving logs from garbage-collected PipelineRuns (older than ~5 days). Do not attempt generic debugging approaches (e.g. `oc get pipelinerun`) without first checking whether the resources have been GC'd and switching to `kubectl ka` if needed.
+
 ## Commit Message Convention
 
 Automated builds follow: `Automatic build <package>==<version>`
