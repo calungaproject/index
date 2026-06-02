@@ -60,6 +60,10 @@ When debugging Konflux pipeline failures (wheel-check failures, build errors, re
 
 Automated builds follow: `Automatic build <package>==<version>`
 
+## Git Commit Attribution
+
+Use `Assisted-by` as the commit trailer (not `Co-Authored-By`).
+
 ## Platform Support
 
 - Python 3.12 (primary), Python 3.13 (planned)
