@@ -1,0 +1,7 @@
+{
+    "version": "0.15",
+    "ignored_versions": [
+        "0.13",
+        "0.14"
+    ]
+}
