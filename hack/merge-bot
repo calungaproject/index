@@ -1,0 +1,106 @@
+#!/bin/bash
+#
+# merge-bot — Merge eligible automated-build PRs after Konflux CI passes.
+#
+# Called by .github/workflows/merge_bot.yml on a 2-hour schedule and on
+# workflow_dispatch. Requires GH_TOKEN and GH_REPO environment variables
+# (provided by the workflow via ${{ github.token }} and ${{ github.repository }}).
+#
+# Safety model:
+#   - Only PRs labeled "automated build" AND authored by app/github-actions
+#     are considered (double-gate against label spoofing).
+#   - Konflux checks are discovered dynamically by GitHub App slug, not by
+#     hardcoded check names, so adding/removing IntegrationTestScenarios
+#     requires no merge-bot update.
+#   - Three guards prevent premature merges:
+#       Guard 1: At least MIN_CHECKS check-runs must have reported.
+#       Guard 2: All matched checks must be completed (no in-progress).
+#       Guard 3: All completed checks must be "success" or "neutral"
+#                (enterprise-contract reports "neutral" on success).
+#
+set -euo pipefail
+
+readonly KONFLUX_APP="red-hat-konflux-kflux-prd-rh03"
+readonly MIN_CHECKS=7
+
+: "${GH_REPO:?GH_REPO must be set}"
+: "${GH_TOKEN:?GH_TOKEN must be set}"
+
+echo "::group::Finding eligible PRs"
+
+ELIGIBLE_PRS=$(gh pr list \
+    --state open \
+    --label "automated build" \
+    --json number,title,author,headRefOid \
+    --jq '[.[] | select(.author.login == "app/github-actions")]')
+
+PR_COUNT=$(echo "${ELIGIBLE_PRS}" | jq length)
+echo "Found ${PR_COUNT} eligible PRs"
+echo "::endgroup::"
+
+if [[ "${PR_COUNT}" -eq 0 ]]; then
+    echo "No eligible PRs to merge."
+    exit 0
+fi
+
+MERGED=0
+SKIPPED=0
+FAILED=0
+
+while IFS= read -r PR_JSON; do
+    PR_NUMBER=$(echo "${PR_JSON}" | jq -r '.number')
+    PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
+    HEAD_SHA=$(echo "${PR_JSON}" | jq -r '.headRefOid')
+
+    echo "::group::PR #${PR_NUMBER}: ${PR_TITLE}"
+
+    CHECKS_JSON=$(gh api --paginate \
+        "repos/${GH_REPO}/commits/${HEAD_SHA}/check-runs" \
+        --jq ".check_runs[] | select(.app.slug == \"${KONFLUX_APP}\")" | jq -s '.')
+
+    CHECK_COUNT=$(echo "${CHECKS_JSON}" | jq length)
+
+    # Guard 1: enough checks must have reported
+    if [[ "${CHECK_COUNT}" -lt "${MIN_CHECKS}" ]]; then
+        echo "  Only ${CHECK_COUNT}/${MIN_CHECKS} Konflux checks reported -- not ready"
+        SKIPPED=$((SKIPPED + 1))
+        echo "::endgroup::"
+        continue
+    fi
+
+    # Guard 2: all checks must have completed (no in-progress)
+    IN_PROGRESS=$(echo "${CHECKS_JSON}" | jq '[.[] | select(.status != "completed")] | length')
+    if [[ "${IN_PROGRESS}" -gt 0 ]]; then
+        echo "  ${IN_PROGRESS} checks still running -- not ready"
+        SKIPPED=$((SKIPPED + 1))
+        echo "::endgroup::"
+        continue
+    fi
+
+    # Guard 3: all completed checks must be success or neutral
+    NOT_PASSING=$(echo "${CHECKS_JSON}" |
+        jq '[.[] | select(.conclusion != "success" and .conclusion != "neutral")] | length')
+    if [[ "${NOT_PASSING}" -gt 0 ]]; then
+        echo "  ${NOT_PASSING} checks not passing:"
+        echo "${CHECKS_JSON}" |
+            jq -r '.[] | select(.conclusion != "success" and .conclusion != "neutral") | "    \(.name): \(.conclusion)"'
+        SKIPPED=$((SKIPPED + 1))
+        echo "::endgroup::"
+        continue
+    fi
+
+    echo "  All ${CHECK_COUNT} Konflux checks passed. Merging..."
+    if gh pr merge "${PR_NUMBER}" --rebase --delete-branch; then
+        echo "  Merged successfully."
+        MERGED=$((MERGED + 1))
+        sleep 10
+    else
+        echo "  Merge failed (likely rebase conflict)."
+        FAILED=$((FAILED + 1))
+    fi
+
+    echo "::endgroup::"
+done < <(echo "${ELIGIBLE_PRS}" | jq -c '.[]')
+
+echo ""
+echo "Summary: merged=${MERGED} skipped=${SKIPPED} failed=${FAILED}"
