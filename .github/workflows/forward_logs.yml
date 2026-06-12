@@ -1,7 +1,7 @@
 name: Log Forwarder
 on:
   workflow_run:
-    workflows: ["Get New Package Versions"]
+    workflows: ["Get New Package Versions", "Merge Bot"]
     types: [completed]
 
 jobs:
