@@ -196,6 +196,8 @@ spec:
           value: $(tasks.build-wheels.results.IMAGE_DIGEST)
         - name: image-url
           value: $(tasks.build-wheels.results.IMAGE_URL)
+        - name: SNYK_SECRET
+          value: snyk-sdist-secret
       taskRef:
         resolver: git
         params:
