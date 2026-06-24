@@ -16,6 +16,16 @@ extract_version() {
     grep -o '"version": *"[^"]*"' | sed 's/.*"version": *"\([^"]*\)".*/\1/' || true
 }
 
+# Extract package names from the build_extra JSON array.
+# Handles both single-line and multi-line formatted arrays.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+extract_build_extra() {
+    tr -d '\n' | \
+        sed -n 's/.*"build_extra"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' | \
+        tr ',' '\n' | \
+        sed 's/^[[:space:]]*"//; s/"[[:space:]]*$//; /^$/d'
+}
+
 # Find JSON files that were added or modified compared to the revision
 set +e
 CHANGED_FILES="$(git diff --name-only --diff-filter=AM "${REVISION}" -- "${PACKAGES_DIR}/")"
@@ -44,6 +54,40 @@ for f in $CHANGED_FILES; do
     fi
 done
 NEW_PACKAGES="$(echo -n "$NEW_PACKAGES" | sed '/^$/d')"
+
+# Resolve build_extra dependencies for each package to be built
+EXTRA_PACKAGES=""
+for pkg_entry in $NEW_PACKAGES; do
+    pkg_name="${pkg_entry%%==*}"
+    pkg_file="${PACKAGES_DIR}/${pkg_name}.json"
+    if [[ -f "$pkg_file" ]]; then
+        extras="$(extract_build_extra < "$pkg_file")" || true
+        for dep in $extras; do
+            dep_file="${PACKAGES_DIR}/${dep}.json"
+            if [[ ! -f "$dep_file" ]]; then
+                echo "[ERROR] build_extra dependency '${dep}' in ${pkg_name}.json has no corresponding ${dep_file}" >&2
+                exit 1
+            fi
+            dep_version="$(extract_version < "$dep_file")"
+            if [[ -z "$dep_version" ]]; then
+                echo "[ERROR] Could not extract version from ${dep_file}" >&2
+                exit 1
+            fi
+            dep_entry="${dep}==${dep_version}"
+            if ! echo "$NEW_PACKAGES" | grep -qx "$dep_entry" && \
+               ! echo "$EXTRA_PACKAGES" | grep -qx "$dep_entry"; then
+                EXTRA_PACKAGES="${EXTRA_PACKAGES}${dep_entry}"$'\n'
+            fi
+        done
+    fi
+done
+EXTRA_PACKAGES="$(echo -n "$EXTRA_PACKAGES" | sed '/^$/d')"
+if [[ -n "$EXTRA_PACKAGES" ]]; then
+    echo "Extra dependencies to build:" >&2
+    echo "${EXTRA_PACKAGES}" >&2
+    NEW_PACKAGES="${NEW_PACKAGES}"$'\n'"${EXTRA_PACKAGES}"
+    NEW_PACKAGES="$(echo -n "$NEW_PACKAGES" | sed '/^$/d')"
+fi
 
 echo "Packages to build:"
 echo "${NEW_PACKAGES}"
