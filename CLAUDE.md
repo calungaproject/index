@@ -8,7 +8,7 @@ This is the **Calunga / Trusted Libraries Index** — a Red Hat project that mai
 
 ## Key Concepts
 
-- **onboarded_packages/**: The source of truth — one JSON file per package with `{"version": "...", "ignored_versions": [...]}`. The `version` field specifies the latest version to build; `ignored_versions` lists versions to skip during automated updates.
+- **onboarded_packages/**: The source of truth — one JSON file per package with `{"version": "...", "ignored_versions": [...]}`. The `version` field specifies the latest version to build; `ignored_versions` lists versions to skip during automated updates. An optional `build_extra` field (list of bare package names) declares undeclared dependencies that must be built alongside the package — `identify-packages` resolves each to its current version from the corresponding JSON file. Every entry in `build_extra` must have a matching onboarded package JSON or the build will fail.
 - **Build pipeline**: Tekton/Konflux on OpenShift. Builds wheels from source, runs security scans (Snyk, Coverity, ClamAV, SAST), and pushes OCI artifacts to Quay
 - **Automated updates**: GitHub Actions workflow checks PyPI for new versions not yet in Pulp, creates PRs with auto-merge
 
