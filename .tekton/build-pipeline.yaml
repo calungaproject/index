@@ -199,14 +199,14 @@ spec:
         - name: SNYK_SECRET
           value: snyk-sdist-secret
       taskRef:
-        resolver: git
         params:
-          - name: url
-            value: https://github.com/calungaproject/plumbing
-          - name: revision
-            value: main
-          - name: pathInRepo
-            value: tasks/sast-snyk-check-sdist.yaml
+          - name: name
+            value: sast-snyk-check-sdist
+          - name: bundle
+            value: quay.io/redhat-user-workloads/calunga-tenant/task-sast-snyk-check-sdist@sha256:28de13adc1a3acb4117be7e9995634d5fad9360c6f85edc1c44b9ca4a7b581fb
+          - name: kind
+            value: task
+        resolver: bundles
       when:
         - input: $(params.skip-checks)
           operator: in
