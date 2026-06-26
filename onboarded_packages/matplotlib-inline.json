@@ -1,6 +1,6 @@
 {
     "version": "0.2.2",
-    "build_extra": "matplotlib",
+    "build_extra": ["matplotlib"],
     "ignored_versions": [
         "0.1.0",
         "0.1.1",
