@@ -23,6 +23,7 @@ spec:
           - test.no_erred_tests:ecosystem-cert-preflight-checks
           # TODO: Setup snyk.
           - test.no_skipped_tests:sast-snyk-check-sdist
+          - test.no_skipped_tests:sast-snyk-check-oci-ta
           # TODO: Does it make sense to restrict to weekdays?
           - schedule.weekday_restriction
           # Does a source container image make sense here? Where would we deploy it? The source
@@ -42,6 +43,7 @@ spec:
           - tasks.required_tasks_found:rpms-signature-scan
           - tasks.required_tasks_found:sast-shell-check-oci-ta
           - tasks.required_tasks_found:sast-snyk-check-sdist
+          - tasks.required_tasks_found:sast-snyk-check-oci-ta
           # TODO: init task is kind of useless.
           - tasks.required_tasks_found:init
           # TODO: No tests are executed during the build.
