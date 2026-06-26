@@ -11,9 +11,9 @@ concurrency:
 
 on:
   workflow_dispatch:
-  schedule:
+  # schedule:
     # Run every 2 hours, offset from the package scanner to avoid overlap
-    - cron: '17 1,3,5,7,9,11,13,15,17,19,21,23 * * *'
+    # - cron: '17 1,3,5,7,9,11,13,15,17,19,21,23 * * *'
 
 jobs:
   merge-eligible-prs:
