@@ -16,7 +16,7 @@ PULP_CONTENT_API = os.getenv(
     "PULP_CONTENT_API",
     f"{PULP_BASE_URL}/api/pulp/{PULP_DOMAIN}/api/v3/content/python/packages/"
 )
-PULP_REPOSITORY_VERSION = os.getenv("PULP_REPOSITORY_VERSION")
+PULP_REPO_ID = os.getenv("PULP_REPO_ID", "019aa284-e214-77e7-862c-48d5905cccc6")
 
 def fetch_all_packages():
     """Fetch all packages from Pulp using the content list API with pagination."""
@@ -24,9 +24,19 @@ def fetch_all_packages():
 
     params = {"limit": 100}
 
-    if PULP_REPOSITORY_VERSION:
-        params["repository_version"] = PULP_REPOSITORY_VERSION
-        LOGGER.info(f"Filtering by repository_version: {PULP_REPOSITORY_VERSION}")
+    repo_version_url = f"{PULP_BASE_URL}/api/pulp/{PULP_DOMAIN}/api/v3/repositories/python/python/{PULP_REPO_ID}/"
+    try:
+        repo_version_response = requests.get(repo_version_url)
+    except requests.RequestException as e:
+        LOGGER.error(f"Request failed: {e}")
+        sys.exit(1)
+
+    response_data = repo_version_response.json()
+    PULP_REPOSITORY_VERSION = response_data.get("latest_version_href", None)
+    if PULP_REPOSITORY_VERSION is None:
+        LOGGER.error(f"Something went wrong with fetching current pulp repository version. {response_data}")
+        sys.exit(1)
+    LOGGER.info(f"Using pulp repository version: {PULP_REPOSITORY_VERSION}")
 
     url = PULP_CONTENT_API
     LOGGER.info(f"Querying: {url}")
