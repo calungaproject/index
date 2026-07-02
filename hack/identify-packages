@@ -16,6 +16,13 @@ extract_version() {
     grep -o '"version": *"[^"]*"' | sed 's/.*"version": *"\([^"]*\)".*/\1/' || true
 }
 
+# Extract the "sdist_url" value from a JSON file using grep/sed.
+# Returns empty string if the field is absent.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+extract_sdist_url() {
+    grep -o '"sdist_url": *"[^"]*"' | sed 's/.*"sdist_url": *"\([^"]*\)".*/\1/' || true
+}
+
 # Extract package names from the build_extra JSON array.
 # Handles both single-line and multi-line formatted arrays.
 # jq not available in the Tekton SCRIPT_RUNNER_IMAGE
@@ -49,7 +56,12 @@ for f in $CHANGED_FILES; do
         OLD_VERSION="$(git show "${REVISION}:${f}" 2>/dev/null | extract_version || true)"
 
         if [[ "$CURRENT_VERSION" != "$OLD_VERSION" ]]; then
-            NEW_PACKAGES="${NEW_PACKAGES}${PKG_NAME}==${CURRENT_VERSION}"$'\n'
+            SDIST_URL="$(extract_sdist_url < "$f")"
+            if [[ -n "$SDIST_URL" ]]; then
+                NEW_PACKAGES="${NEW_PACKAGES}${PKG_NAME} @ ${SDIST_URL}@${CURRENT_VERSION}"$'\n'
+            else
+                NEW_PACKAGES="${NEW_PACKAGES}${PKG_NAME}==${CURRENT_VERSION}"$'\n'
+            fi
         fi
     fi
 done
@@ -57,8 +69,13 @@ NEW_PACKAGES="$(echo -n "$NEW_PACKAGES" | sed '/^$/d')"
 
 # Resolve build_extra dependencies for each package to be built
 EXTRA_PACKAGES=""
-for pkg_entry in $NEW_PACKAGES; do
-    pkg_name="${pkg_entry%%==*}"
+while IFS= read -r pkg_entry; do
+    [[ -z "$pkg_entry" ]] && continue
+    if [[ "$pkg_entry" == *" @ "* ]]; then
+        pkg_name="${pkg_entry%% @*}"
+    else
+        pkg_name="${pkg_entry%%==*}"
+    fi
     pkg_file="${PACKAGES_DIR}/${pkg_name}.json"
     if [[ -f "$pkg_file" ]]; then
         extras="$(extract_build_extra < "$pkg_file")" || true
@@ -73,14 +90,19 @@ for pkg_entry in $NEW_PACKAGES; do
                 echo "[ERROR] Could not extract version from ${dep_file}" >&2
                 exit 1
             fi
-            dep_entry="${dep}==${dep_version}"
-            if ! echo "$NEW_PACKAGES" | grep -qx "$dep_entry" && \
-               ! echo "$EXTRA_PACKAGES" | grep -qx "$dep_entry"; then
+            dep_sdist_url="$(extract_sdist_url < "$dep_file")"
+            if [[ -n "$dep_sdist_url" ]]; then
+                dep_entry="${dep} @ ${dep_sdist_url}@${dep_version}"
+            else
+                dep_entry="${dep}==${dep_version}"
+            fi
+            if ! echo "$NEW_PACKAGES" | grep -Fqx "$dep_entry" && \
+               ! echo "$EXTRA_PACKAGES" | grep -Fqx "$dep_entry"; then
                 EXTRA_PACKAGES="${EXTRA_PACKAGES}${dep_entry}"$'\n'
             fi
         done
     fi
-done
+done <<< "$NEW_PACKAGES"
 EXTRA_PACKAGES="$(echo -n "$EXTRA_PACKAGES" | sed '/^$/d')"
 if [[ -n "$EXTRA_PACKAGES" ]]; then
     echo "Extra dependencies to build:" >&2
