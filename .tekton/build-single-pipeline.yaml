@@ -1,0 +1,347 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-single
+  labels:
+    release.appstudio.openshift.io/auto-release: "false"
+spec:
+  description: |
+    Build a single Python wheel by specifying the package and version directly,
+    bypassing the identify-packages step. Useful for manual/one-off builds.
+    Usage: pass e.g. package="requests==2.31.0"
+  params:
+    - description: Source Repository URL
+      name: git-url
+      type: string
+    - default: ""
+      description: Revision of the Source Repository
+      name: revision
+      type: string
+    - description: Fully Qualified Output Image
+      name: output-image
+      type: string
+    - default: .
+      description: Path to the source code of an application's component from where to build image.
+      name: path-context
+      type: string
+    - default: Dockerfile
+      description: Path to the Dockerfile inside the context specified by parameter path-context
+      name: dockerfile
+      type: string
+    - default: "false"
+      description: Force rebuild image
+      name: rebuild
+      type: string
+    - default: "false"
+      description: Skip checks against built image
+      name: skip-checks
+      type: string
+    - default: "false"
+      description: Execute the build with network isolation
+      name: hermetic
+      type: string
+    - default: ""
+      description: Build dependencies to be prefetched
+      name: prefetch-input
+      type: string
+    - default: ""
+      description: Image tag expiration time, time values could be something like 1h, 2d, 3w for hours, days, and weeks, respectively.
+      name: image-expires-after
+      type: string
+    - default: "false"
+      description: Add built image into an OCI image index
+      name: build-image-index
+      type: string
+    - default: []
+      description: Array of --build-arg values ("arg=value" strings) for buildah
+      name: build-args
+      type: array
+    - default: ""
+      description: Path to a file with build arguments for buildah, see https://www.mankier.com/1/buildah-build#--build-arg-file
+      name: build-args-file
+      type: string
+    - default: "false"
+      description: Whether to enable privileged mode, should be used only with remote VMs
+      name: privileged-nested
+      type: string
+    - description: 'Package to build in name==version format (e.g. "requests==2.31.0")'
+      name: package
+      type: string
+    - default: "1"
+      description: Git clone depth
+      name: git-clone-depth
+      type: string
+    - name: enable-cache-proxy
+      default: 'false'
+      description: Enable cache proxy configuration
+      type: string
+    - name: wheel-server-url
+      type: string
+      default: "https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/"
+      description: Wheel cache server URL for prebuilt wheel lookup. Set to empty string to force building from source.
+    - name: local-version
+      type: string
+      default: "rhlw"
+      description: PEP 440 local version identifier to add to the top-level package wheels (e.g. 'rhlw' produces pkg-1.0+rhlw). Set to empty string to disable.
+    - name: scripts-repo-url
+      type: string
+      default: ""
+      description: Git URL of the plumbing repo containing build scripts. When set, scripts are cloned from this repo instead of using versions baked into the builder image.
+    - name: scripts-repo-ref
+      type: string
+      default: "main"
+      description: Git ref (branch, tag, or commit SHA) to checkout from scripts-repo-url.
+    - name: git-token-secret-name
+      type: string
+      default: ""
+      description: Name of the K8s secret containing a Git token (key 'password') for cloning private repos referenced in package specs.
+    - name: sast-target-dirs
+      type: string
+      default: .
+      description: Target directories to scan with SAST tools. Multiple values should be separated with commas.
+  results:
+    - description: ""
+      name: IMAGE_URL
+      value: $(tasks.build-wheels.results.IMAGE_URL)
+    - description: ""
+      name: IMAGE_DIGEST
+      value: $(tasks.build-wheels.results.IMAGE_DIGEST)
+    - description: ""
+      name: CHAINS-GIT_URL
+      value: $(tasks.clone-repository.results.url)
+    - description: ""
+      name: CHAINS-GIT_COMMIT
+      value: $(tasks.clone-repository.results.commit)
+  tasks:
+    - name: init
+      params:
+        - name: image-url
+          value: $(params.output-image)
+        - name: rebuild
+          value: $(params.rebuild)
+        - name: skip-checks
+          value: $(params.skip-checks)
+        - name: enable-cache-proxy
+          value: $(params.enable-cache-proxy)
+      taskRef:
+        params:
+          - name: name
+            value: init
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-init:0.4@sha256:5a423246792ac501ea279229b42ee57da9927da441c04b5c9ff86817b0856b08
+          - name: kind
+            value: task
+        resolver: bundles
+    - name: clone-repository
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.revision)
+        - name: fetchTags
+          value: "true"
+        - name: depth
+          value: $(params.git-clone-depth)
+        - name: ociStorage
+          value: $(params.output-image).git
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
+      taskRef:
+        params:
+          - name: name
+            value: git-clone-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1@sha256:d30f13dd15daf89dd6dc645243b3444d35570d13f7840c3fd65e366022515205
+          - name: kind
+            value: task
+        resolver: bundles
+      workspaces:
+        - name: basic-auth
+          workspace: git-auth
+    - name: build-wheels
+      params:
+        - name: PACKAGES
+          value:
+            - $(params.package)
+        - name: IMAGE
+          value: $(params.output-image).wheel
+        - name: IMAGE_EXPIRES_AFTER
+          value: $(params.image-expires-after)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: WHEEL_SERVER_URL
+          value: $(params.wheel-server-url)
+        - name: LOCAL_VERSION
+          value: $(params.local-version)
+        - name: SCRIPTS_REPO_URL
+          value: $(params.scripts-repo-url)
+        - name: SCRIPTS_REPO_REF
+          value: $(params.scripts-repo-ref)
+        - name: GIT_TOKEN_SECRET_NAME
+          value: $(params.git-token-secret-name)
+      taskRef:
+        params:
+          - name: url
+            value: https://github.com/calungaproject/plumbing
+          - name: revision
+            value: add-local-version
+          - name: pathInRepo
+            value: tasks/build-python-wheels-oci-ta.yaml
+        resolver: git
+    - name: sast-snyk-check-sdist
+      params:
+        - name: image-digest
+          value: $(tasks.build-wheels.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-wheels.results.IMAGE_URL)
+        - name: SNYK_SECRET
+          value: snyk-sdist-secret
+      taskRef:
+        params:
+          - name: name
+            value: sast-snyk-check-sdist
+          - name: bundle
+            value: quay.io/redhat-user-workloads/calunga-tenant/task-sast-snyk-check-sdist@sha256:28de13adc1a3acb4117be7e9995634d5fad9360c6f85edc1c44b9ca4a7b581fb
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+    - name: sast-coverity-check
+      params:
+        - name: image-digest
+          value: $(tasks.build-wheels.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-wheels.results.IMAGE_URL)
+        - name: IMAGE
+          value: $(params.output-image)
+        - name: DOCKERFILE
+          value: $(params.dockerfile)
+        - name: CONTEXT
+          value: $(params.path-context)
+        - name: HERMETIC
+          value: $(params.hermetic)
+        - name: PREFETCH_INPUT
+          value: $(params.prefetch-input)
+        - name: IMAGE_EXPIRES_AFTER
+          value: $(params.image-expires-after)
+        - name: COMMIT_SHA
+          value: $(tasks.clone-repository.results.commit)
+        - name: BUILD_ARGS
+          value:
+            - $(params.build-args[*])
+        - name: BUILD_ARGS_FILE
+          value: $(params.build-args-file)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: TARGET_DIRS
+          value: $(params.sast-target-dirs)
+      taskRef:
+        params:
+          - name: name
+            value: sast-coverity-check-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-sast-coverity-check-oci-ta:0.3@sha256:e92d00ed858233d0096627861192d3e4fc013cf1559c0d0b0ea0657d3377ce75
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+        - input: $(tasks.coverity-availability-check.results.STATUS)
+          operator: in
+          values:
+            - success
+    - name: coverity-availability-check
+      taskRef:
+        params:
+          - name: name
+            value: coverity-availability-check
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-coverity-availability-check:0.2@sha256:8b501440a960aec446db2ebc6625a49d0317a9fc7bf0f7bd9b18cb63052db7de
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+    - name: sast-shell-check
+      params:
+        - name: image-digest
+          value: $(tasks.build-wheels.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-wheels.results.IMAGE_URL)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: TARGET_DIRS
+          value: $(params.sast-target-dirs)
+      taskRef:
+        params:
+          - name: name
+            value: sast-shell-check-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-sast-shell-check-oci-ta:0.1@sha256:e5319fccebd21a1b06eb8fa6a46b78d745ce87464ed2cdd08b5f68a4489e2f14
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+    - name: sast-unicode-check
+      params:
+        - name: image-digest
+          value: $(tasks.build-wheels.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-wheels.results.IMAGE_URL)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: TARGET_DIRS
+          value: $(params.sast-target-dirs)
+      taskRef:
+        params:
+          - name: name
+            value: sast-unicode-check-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.4@sha256:99cc3729af9c3e1e6821e07e4d46cc0366a43d53cfba42846c0461abb68b5362
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+    - name: clamav-scan
+      params:
+        - name: image-digest
+          value: $(tasks.build-wheels.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-wheels.results.IMAGE_URL)
+      taskRef:
+        params:
+          - name: name
+            value: clamav-scan
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-clamav-scan:0.3@sha256:567cb66bd2e1f4b58b9d4d756f3317fc62479e0b40aa0de66094b1f12d296cfc
+          - name: kind
+            value: task
+        resolver: bundles
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+  workspaces:
+    - name: git-auth
+      optional: true
+    - name: netrc
+      optional: true
