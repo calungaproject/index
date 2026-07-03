@@ -67,7 +67,7 @@ spec:
       name: prev-packages-ref
       type: string
     - default: "1"
-      descripton: Git clone depth
+      description: Git clone depth
       name: git-clone-depth
       type: string
     - name: enable-cache-proxy
