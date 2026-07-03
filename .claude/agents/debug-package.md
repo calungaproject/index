@@ -182,9 +182,9 @@ Release `.status.conditions[].type == "Released"` values:
 
 **Symptoms**: No snapshot found for the commit SHA. PipelineRun may be missing too (GC'd) or may show a failed status.
 
-**Root cause**: On-push pipeline never ran (Pipelines-as-Code misconfiguration, webhook failure) or it failed (build error, resource limits). Old PipelineRuns get garbage-collected.
+**Root cause**: On-push pipeline never ran (Pipelines-as-Code misconfiguration, webhook failure) or it failed (build error, resource limits, transient image pull errors). Old PipelineRuns get garbage-collected.
 
-**Remediation**: Trigger a new build by making a new commit that touches the package file:
+**Remediation**: If the original PipelineRun failed due to a transient error (e.g. registry 503, image pull backoff), retry it for the original commit — see [Retrying a Failed On-Push Pipeline](#retrying-a-failed-on-push-pipeline) below. If there was never a PipelineRun at all, trigger a new build by making a new commit that touches the package file:
 ```bash
 hack/onboard.sh <package>
 ```
@@ -267,6 +267,40 @@ EOF
 ```bash
 jq -r '.[]' pulp_pkgs.json | grep -i "<pkg-name-with-dots>"
 ```
+
+## Retrying a Failed On-Push Pipeline
+
+When an on-push PipelineRun fails due to a transient error (registry 503, image pull backoff, OOM on infra containers), you need to retry it **for the original commit**. The Konflux UI "Rerun" button does NOT work correctly — it re-resolves PaC template variables (`{{revision}}`) against the current HEAD of main, so `identify-packages` diffs the wrong commit pair and builds the wrong (or no) packages.
+
+### Why "Rerun" uses the wrong commit
+
+The on-push template (`.tekton/calunga-v2-index-main-push.yaml`) uses:
+```yaml
+- name: revision
+  value: '{{revision}}'        # resolved from push webhook payload
+- name: prev-packages-ref
+  value: 'HEAD^'               # parent of the checked-out commit
+```
+
+On rerun, PaC resolves `{{revision}}` to the latest commit on main, not the original. Since `HEAD^` is relative to the checked-out revision, the entire diff window shifts.
+
+### Correct retry procedure
+
+Run the retry script from the repo root:
+
+```bash
+hack/retry-onpush.sh <pipelinerun-name>
+```
+
+The script fetches the original PipelineRun (live cluster or kubearchive), extracts its params and metadata, combines them with the **current** pipeline definition from `.tekton/build-pipeline.yaml`, and creates a new PipelineRun targeting the original commit. It does NOT reuse the archived `pipelineSpec` — archived specs contain stale task bundle digests that fail EC trusted-task checks.
+
+### Key details
+
+- **Current pipelineSpec**: The retry uses the pipeline definition from the current `.tekton/build-pipeline.yaml`, NOT the inlined spec from the archived run. Archived specs contain stale task bundle digests that fail EC trusted-task checks.
+- **git-auth-dummy**: PaC creates ephemeral `pac-gitauth-*` secrets per run — they're deleted after the run. The `git-auth-dummy` secret (empty credentials) works because the repo is public.
+- **Stripped annotations**: The `check-run-id` and `git-auth-secret` PaC annotations are intentionally removed to prevent PaC from trying to update a stale GitHub check or use a deleted secret. The remaining PaC annotations (`sha`, `repository`, `original-prname`, etc.) are kept so the Integration Service can create a Snapshot for the correct commit.
+- **ignore-supersession**: The retry always injects `test.appstudio.openshift.io/ignore-supersession: "true"`. Archived PLRs from before commit `adbf127f` won't have this annotation, and without it the new snapshot can get superseded ("Released in newer Snapshot"), requiring a manual Release CR.
+- **Alternative**: If you have webhook admin access on the GitHub repo, you can redeliver the original push webhook from Settings > Webhooks > Recent Deliveries. This is simpler but requires elevated access.
 
 ## Bulk Operations
 
@@ -374,6 +408,7 @@ done
 - **Snapshots may have multiple releases.** Always query as an array and iterate: `jq '[.items[] | select(...)]'` then `jq -c '.[]' | while read -r rel`.
 - **Timed-out releases often succeed eventually.** A release stuck at "Progressing" for 10+ minutes usually finishes — it's just slow, not broken. Check back later.
 - **PipelineRuns are garbage-collected.** After ~5 days, old PipelineRuns are deleted. The snapshot still exists and references the build, but you can't inspect the PipelineRun directly.
+- **Do NOT use the Konflux UI "Rerun" button for on-push pipelines.** It re-resolves `{{revision}}` to the latest commit on main, causing `identify-packages` to diff the wrong commits. Use the manual retry procedure instead.
 - **Batch onboarding causes "Released in newer Snapshot".** When many packages are committed in quick succession, only the latest snapshot gets auto-released. All earlier snapshots (each containing a unique package build) need manual Release CRs. This has been mitigated by adding `test.appstudio.openshift.io/ignore-supersession: "true"` to the on-push PipelineRun annotation (commit `adbf127f`), but older snapshots from before the fix may still be affected.
 - **Name normalization is real.** Always check Pulp with both dash and dot variants. Common prefixes: `backports`, `jaraco`, `zope`, `ruamel`.
 - **Release CR template requires `releasePlan: calunga`.** This references the ReleasePlan CR in the namespace. The `gracePeriodDays: 7` field controls how long the release artifacts are retained.
