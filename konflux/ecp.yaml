@@ -23,8 +23,6 @@ spec:
           - test.no_erred_tests:ecosystem-cert-preflight-checks
           # TODO: Setup snyk.
           - test.no_skipped_tests:sast-snyk-check-sdist
-          # Source origin check — non-blocking until validated.
-          - test.no_skipped_tests:check-source-origin
           # TODO: Does it make sense to restrict to weekdays?
           - schedule.weekday_restriction
           # Does a source container image make sense here? Where would we deploy it? The source
