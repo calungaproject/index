@@ -1,5 +1,6 @@
 {
     "version": "2025.8.0.0",
+    "build_extra": ["matplotlib"],
     "ignored_versions": [
         "2020.1",
         "2020.2",
