@@ -1,5 +1,6 @@
 {
     "version": "0.5.9",
+    "build_extra": ["polyfile"],
     "ignored_versions": [
         "0.5.5",
         "0.5.6",
