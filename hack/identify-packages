@@ -23,6 +23,23 @@ extract_sdist_url() {
     grep -o '"sdist_url": *"[^"]*"' | sed 's/.*"sdist_url": *"\([^"]*\)".*/\1/' || true
 }
 
+# Extract the "git_tag_template" value from a JSON file using grep/sed.
+# Returns empty string if the field is absent (caller defaults to "{version}").
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+extract_git_tag_template() {
+    grep -o '"git_tag_template": *"[^"]*"' | sed 's/.*"git_tag_template": *"\([^"]*\)".*/\1/' || true
+}
+
+# Build a PEP 440 URL requirement from package name, version, sdist_url, and git_tag_template.
+# Usage: format_url_entry <name> <version> <sdist_url> [<git_tag_template>]
+format_url_entry() {
+    local name="$1" version="$2" url="$3"
+    local default_template='{version}'
+    local template="${4:-$default_template}"
+    local tag="${template//\{version\}/$version}"
+    printf '%s' "${name} @ ${url}@${tag}"
+}
+
 # Extract package names from the build_extra JSON array.
 # Handles both single-line and multi-line formatted arrays.
 # jq not available in the Tekton SCRIPT_RUNNER_IMAGE
@@ -58,7 +75,8 @@ for f in $CHANGED_FILES; do
         if [[ "$CURRENT_VERSION" != "$OLD_VERSION" ]]; then
             SDIST_URL="$(extract_sdist_url < "$f")"
             if [[ -n "$SDIST_URL" ]]; then
-                NEW_PACKAGES="${NEW_PACKAGES}${PKG_NAME} @ ${SDIST_URL}@${CURRENT_VERSION}"$'\n'
+                GIT_TAG_TEMPLATE="$(extract_git_tag_template < "$f")"
+                NEW_PACKAGES="${NEW_PACKAGES}$(format_url_entry "$PKG_NAME" "$CURRENT_VERSION" "$SDIST_URL" "$GIT_TAG_TEMPLATE")"$'\n'
             else
                 NEW_PACKAGES="${NEW_PACKAGES}${PKG_NAME}==${CURRENT_VERSION}"$'\n'
             fi
@@ -92,7 +110,8 @@ while IFS= read -r pkg_entry; do
             fi
             dep_sdist_url="$(extract_sdist_url < "$dep_file")"
             if [[ -n "$dep_sdist_url" ]]; then
-                dep_entry="${dep} @ ${dep_sdist_url}@${dep_version}"
+                dep_git_tag_template="$(extract_git_tag_template < "$dep_file")"
+                dep_entry="$(format_url_entry "$dep" "$dep_version" "$dep_sdist_url" "$dep_git_tag_template")"
             else
                 dep_entry="${dep}==${dep_version}"
             fi
