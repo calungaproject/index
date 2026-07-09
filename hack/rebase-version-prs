@@ -1,0 +1,285 @@
+#!/bin/bash
+#
+# rebase-version-prs — Rebase and merge conflicting automated-build PRs.
+#
+# Automated build PRs each update the "version" field in the same
+# onboarded_packages/*.json file. After one merges, the rest conflict.
+# This script rebases each PR onto main, resolves the version-line
+# conflict, waits for CI, and merges — one per package at a time.
+#
+set -euo pipefail
+
+readonly KONFLUX_APP="red-hat-konflux-kflux-prd-rh03"
+readonly MIN_CHECKS=7
+readonly MAX_POLL_ATTEMPTS=30
+readonly POLL_INTERVAL=120
+
+usage() {
+    cat >&2 <<'USAGE'
+Usage:
+  hack/rebase-version-prs                     Rebase all conflicting automated-build PRs
+  hack/rebase-version-prs --all               Same as above
+  hack/rebase-version-prs --package <name>    Process PRs for a specific package
+  hack/rebase-version-prs <pr> [<pr>...]      Process specific PR numbers
+USAGE
+    exit 1
+}
+
+log() { echo "==> $*" >&2; }
+
+# ---------------------------------------------------------------------------
+# discover_prs: find open automated-build PRs with merge conflicts
+# ---------------------------------------------------------------------------
+discover_prs() {
+    gh pr list \
+        --state open \
+        --label "automated build" \
+        --json number,headRefName,headRefOid,mergeable \
+        --jq '[.[] | select(.headRefName | test("^update-.+==.+$")) | select(.mergeable != "MERGEABLE")]'
+}
+
+# ---------------------------------------------------------------------------
+# filter_prs_by_package: filter PR JSON array to a specific package
+# ---------------------------------------------------------------------------
+filter_prs_by_package() {
+    local package="${1:?filter_prs_by_package requires a package name}"
+    jq --arg pkg "$package" '[.[] | select(.headRefName | startswith("update-\($pkg)=="))]'
+}
+
+# ---------------------------------------------------------------------------
+# filter_prs_by_numbers: filter PR JSON array to specific PR numbers
+# ---------------------------------------------------------------------------
+filter_prs_by_numbers() {
+    local numbers="$1"
+    jq --argjson nums "$numbers" '[.[] | select(.number as $n | $nums | index($n))]'
+}
+
+# ---------------------------------------------------------------------------
+# extract_packages: list unique package names from PR JSON array
+# ---------------------------------------------------------------------------
+extract_packages() {
+    jq -r '[.[].headRefName | capture("^update-(?<pkg>.+)==.+$").pkg] | unique[]'
+}
+
+# ---------------------------------------------------------------------------
+# prs_for_package: extract PRs for a package, sorted by version ascending
+# ---------------------------------------------------------------------------
+prs_for_package() {
+    local package="${1:?prs_for_package requires a package name}"
+    jq -r --arg pkg "$package" \
+        '[.[] | select(.headRefName | startswith("update-\($pkg)=="))]
+         | sort_by(.headRefName | capture("==(?<v>.+)$").v | split(".") | map(tonumber? // .))
+         | .[].number' | while IFS= read -r pr; do
+        echo "$pr"
+    done
+}
+
+# ---------------------------------------------------------------------------
+# rebase_pr: rebase a single PR onto main and force-push
+# ---------------------------------------------------------------------------
+rebase_pr() {
+    local pr_number="${1:?rebase_pr requires a PR number}"
+    local branch package version pkg_file original_ref temp_branch
+
+    branch=$(gh pr view "$pr_number" --json headRefName --jq '.headRefName')
+    package="${branch#update-}"
+    package="${package%%==*}"
+    version="${branch##*==}"
+    pkg_file="onboarded_packages/${package}.json"
+    original_ref=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || git rev-parse HEAD)
+    temp_branch="rebase-tmp/${pr_number}"
+
+    log "PR #${pr_number}: rebasing ${branch} (${package}==${version})"
+
+    git fetch origin main >/dev/null 2>&1
+    git fetch origin "${branch}" >/dev/null 2>&1
+
+    git checkout -b "$temp_branch" "origin/${branch}" >/dev/null 2>&1
+
+    if git rebase origin/main >/dev/null 2>&1; then
+        log "PR #${pr_number}: no conflicts, pushing"
+        git push --force-with-lease origin "${temp_branch}:${branch}" >/dev/null 2>&1
+        git checkout "$original_ref" >/dev/null 2>&1
+        git branch -D "$temp_branch" >/dev/null 2>&1
+        return 0
+    fi
+
+    local conflicted_files
+    conflicted_files=$(git diff --name-only --diff-filter=U)
+
+    if [[ "$conflicted_files" != "$pkg_file" ]]; then
+        log "PR #${pr_number}: unexpected conflicts in: ${conflicted_files}"
+        git rebase --abort >/dev/null 2>&1
+        git checkout "$original_ref" >/dev/null 2>&1
+        git branch -D "$temp_branch" >/dev/null 2>&1
+        return 1
+    fi
+
+    log "PR #${pr_number}: resolving version conflict -> ${version}"
+    jq --arg v "$version" '.version = $v' <(git show "origin/${branch}:${pkg_file}") > "$pkg_file"
+    git add "$pkg_file"
+    GIT_EDITOR=true git rebase --continue >/dev/null 2>&1
+
+    git push --force-with-lease origin "${temp_branch}:${branch}" >/dev/null 2>&1
+
+    git checkout "$original_ref" >/dev/null 2>&1
+    git branch -D "$temp_branch" >/dev/null 2>&1
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# wait_checks: poll Konflux CI until checks pass or fail
+# ---------------------------------------------------------------------------
+wait_checks() {
+    local pr_number="${1:?wait_checks requires a PR number}"
+    local repo
+    repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+
+    local attempt=0
+    while [[ $attempt -lt $MAX_POLL_ATTEMPTS ]]; do
+        local head_sha checks_json check_count in_progress not_passing
+
+        head_sha=$(gh pr view "$pr_number" --json headRefOid --jq '.headRefOid')
+
+        checks_json=$(gh api --paginate "repos/${repo}/commits/${head_sha}/check-runs" \
+            --jq ".check_runs[] | select(.app.slug == \"${KONFLUX_APP}\")" | jq -s '.')
+
+        check_count=$(echo "$checks_json" | jq length)
+
+        if [[ "$check_count" -lt "$MIN_CHECKS" ]]; then
+            log "PR #${pr_number}: ${check_count}/${MIN_CHECKS} checks reported, waiting..."
+            sleep "$POLL_INTERVAL"
+            attempt=$((attempt + 1))
+            continue
+        fi
+
+        in_progress=$(echo "$checks_json" | jq '[.[] | select(.status != "completed")] | length')
+        if [[ "$in_progress" -gt 0 ]]; then
+            log "PR #${pr_number}: ${in_progress} checks still running, waiting..."
+            sleep "$POLL_INTERVAL"
+            attempt=$((attempt + 1))
+            continue
+        fi
+
+        not_passing=$(echo "$checks_json" |
+            jq '[.[] | select(.conclusion != "success" and .conclusion != "neutral")] | length')
+        if [[ "$not_passing" -gt 0 ]]; then
+            log "PR #${pr_number}: ${not_passing} checks failed:"
+            echo "$checks_json" |
+                jq -r '.[] | select(.conclusion != "success" and .conclusion != "neutral") | "    \(.name): \(.conclusion)"' >&2
+            return 1
+        fi
+
+        log "PR #${pr_number}: all ${check_count} Konflux checks passed"
+        return 0
+    done
+
+    log "PR #${pr_number}: timed out waiting for checks"
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# merge_pr: merge a single PR
+# ---------------------------------------------------------------------------
+merge_pr() {
+    local pr_number="${1:?merge_pr requires a PR number}"
+    log "PR #${pr_number}: merging"
+    gh pr merge "$pr_number" --rebase --delete-branch
+}
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+MERGED=0
+FAILED=0
+SKIPPED=0
+MERGED_LIST=""
+FAILED_LIST=""
+SKIPPED_LIST=""
+
+record_merged()  { MERGED=$((MERGED + 1));   MERGED_LIST="${MERGED_LIST}  #${1} (${2})\n"; }
+record_failed()  { FAILED=$((FAILED + 1));   FAILED_LIST="${FAILED_LIST}  #${1} (${2}): ${3}\n"; }
+record_skipped() { SKIPPED=$((SKIPPED + 1)); SKIPPED_LIST="${SKIPPED_LIST}  #${1} (${2}): ${3}\n"; }
+
+MODE="all"
+PACKAGE=""
+PR_NUMBERS="[]"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage ;;
+        --all) MODE="all"; shift ;;
+        --package)
+            MODE="package"
+            PACKAGE="${2:?--package requires a name}"
+            shift 2
+            ;;
+        *)
+            MODE="prs"
+            PR_NUMBERS=$(echo "$PR_NUMBERS" | jq --argjson n "$1" '. + [$n]')
+            shift
+            ;;
+    esac
+done
+
+log "Discovering conflicting PRs..."
+ALL_PRS=$(discover_prs)
+
+case "$MODE" in
+    package) ALL_PRS=$(echo "$ALL_PRS" | filter_prs_by_package "$PACKAGE") ;;
+    prs)     ALL_PRS=$(echo "$ALL_PRS" | filter_prs_by_numbers "$PR_NUMBERS") ;;
+esac
+
+PR_TOTAL=$(echo "$ALL_PRS" | jq length)
+
+if [[ "$PR_TOTAL" -eq 0 ]]; then
+    log "No conflicting PRs to process."
+    exit 0
+fi
+
+PACKAGES=$(echo "$ALL_PRS" | extract_packages)
+log "Found ${PR_TOTAL} conflicting PR(s) across $(echo "$PACKAGES" | wc -l | tr -d ' ') package(s)"
+
+while IFS= read -r pkg; do
+    log "Processing package: ${pkg}"
+    while IFS= read -r pr; do
+        branch=$(echo "$ALL_PRS" | jq -r --argjson n "$pr" '.[] | select(.number == $n) | .headRefName')
+        version="${branch##*==}"
+        label="${pkg}==${version}"
+
+        if ! rebase_pr "$pr"; then
+            record_skipped "$pr" "$label" "unexpected conflict"
+            continue
+        fi
+
+        if ! wait_checks "$pr"; then
+            record_failed "$pr" "$label" "checks failed"
+            continue
+        fi
+
+        if ! merge_pr "$pr"; then
+            record_failed "$pr" "$label" "merge failed"
+            continue
+        fi
+
+        record_merged "$pr" "$label"
+
+    done < <(echo "$ALL_PRS" | prs_for_package "$pkg")
+done <<< "$PACKAGES"
+
+echo "" >&2
+log "Summary: merged=${MERGED} failed=${FAILED} skipped=${SKIPPED}"
+if [[ -n "$MERGED_LIST" ]]; then
+    echo "Merged:" >&2
+    echo -e "$MERGED_LIST" >&2
+fi
+if [[ -n "$FAILED_LIST" ]]; then
+    echo "Failed:" >&2
+    echo -e "$FAILED_LIST" >&2
+fi
+if [[ -n "$SKIPPED_LIST" ]]; then
+    echo "Skipped:" >&2
+    echo -e "$SKIPPED_LIST" >&2
+fi
+
+[[ $FAILED -eq 0 && $SKIPPED -eq 0 ]]
