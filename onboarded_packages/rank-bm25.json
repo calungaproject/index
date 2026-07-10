@@ -1,9 +1,9 @@
 {
-    "version": "0.2.2",
-    "sdist_url": "git+https://github.com/dorianbrown/rank_bm25",
-    "ignored_versions": [
-        "0.1",
-        "0.2",
-        "0.2.1"
-    ]
+  "version": "0.2.2",
+  "sdist_url": "git+https://github.com/dorianbrown/rank_bm25",
+  "ignored_versions": [
+    "0.1",
+    "0.2",
+    "0.2.1"
+  ]
 }
