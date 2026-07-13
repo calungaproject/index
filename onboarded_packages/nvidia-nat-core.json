@@ -1,6 +1,6 @@
 {
     "version": "1.8.0",
-    "sdist_url": "git+https://github.com/NVIDIA/NeMo-Agent-Toolkit",
+    "sdist_url": "git+https://github.com/NVIDIA/NeMo-Agent-Toolkit?subdirectory=packages/nvidia_nat_core",
     "git_tag_template": "v{version}",
     "ignored_versions": [
         "1.5.0a20260211",
