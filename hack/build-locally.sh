@@ -32,19 +32,20 @@ OUTPUT_DIR="${REPO_ROOT}/output"
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "${WORKDIR}"' EXIT
 
-mkdir -p "${OUTPUT_DIR}"
 rm -rf "${OUTPUT_DIR:?}"/*
+mkdir -p "${OUTPUT_DIR}"
 
 echo "Pulling builder image..."
 podman pull "${BUILDER_IMAGE}"
 
 echo "Building wheels: ${PACKAGES[*]}"
-podman run --rm \
+podman run -it --rm \
     -v "${WORKDIR}:/var/workdir:Z" \
     -v "${REPO_ROOT}:/var/workdir/source:ro,Z" \
     -w /var/workdir \
     "${BUILDER_IMAGE}" \
-    build-wheels "${PACKAGES[@]}" --cache-wheel-server-url "${WHEEL_SERVER_URL}"
+    build-wheels "${PACKAGES[@]}" --cache-wheel-server-url "${WHEEL_SERVER_URL}" \
+    --package-settings-dir /var/workdir/source/overrides/settings
 
 echo "Collecting build files..."
 podman run --rm \
