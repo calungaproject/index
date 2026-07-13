@@ -20,6 +20,16 @@ hack/onboard.sh <package_name>
 ```
 Full lifecycle: creates `onboarded_packages/<name>.json`, branches, commits, pushes, opens a PR, waits for CI, merges, and cleans up. Subcommands (`create`, `wait`, `merge`) are available for batch workflows — see `hack/onboard.sh --help`.
 
+### Build a package locally
+```bash
+# From PyPI
+hack/build-locally.sh "typing_extensions==4.14.0"
+
+# From git (for packages with sdist_url)
+hack/build-locally.sh 'csaf-tool @ git+https://github.com/anthonyharrison/csaf@0.3.2'
+```
+Runs the same builder image used in CI via podman. Built wheels are saved to `output/`. Requires `podman`, `yq`, and `tkn`.
+
 ### Check for available updates
 ```bash
 python hack/check-for-updates.py
