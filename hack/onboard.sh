@@ -4,10 +4,12 @@ set -euo pipefail
 usage() {
     cat >&2 <<'USAGE'
 Usage:
-  hack/onboard.sh <package>            Full lifecycle (create + wait + merge)
-  hack/onboard.sh create <package>     Create branch, commit, push, open PR
-  hack/onboard.sh wait <pr-url>        Wait for CI checks to pass
-  hack/onboard.sh merge <pr-url>       Merge PR and clean up branch
+  hack/onboard.sh <package> [version]            Full lifecycle (create + wait + merge)
+  hack/onboard.sh create <package> [version]     Create branch, commit, push, open PR
+  hack/onboard.sh wait <pr-url>                  Wait for CI checks to pass
+  hack/onboard.sh merge <pr-url>                 Merge PR and clean up branch
+
+If [version] is omitted, the latest non-yanked version from PyPI is used.
 USAGE
     exit 1
 }
@@ -19,6 +21,7 @@ log() { echo "==> $*" >&2; }
 # ---------------------------------------------------------------------------
 cmd_create() {
     local PACKAGE="${1:?create requires a package name}"
+    local REQUESTED_VERSION="${2:-}"
     local PACKAGES_DIR="onboarded_packages"
     local PKG_FILE="$PACKAGES_DIR/$PACKAGE.json"
     local BRANCH="onboard/$PACKAGE"
@@ -42,7 +45,11 @@ cmd_create() {
     fi
 
     log "Running onboarding script for $PACKAGE..."
-    python hack/onboard_package.py "$PACKAGE" >&2
+    local onboard_args=("$PACKAGE")
+    if [[ -n "$REQUESTED_VERSION" ]]; then
+        onboard_args+=("$REQUESTED_VERSION")
+    fi
+    python hack/onboard_package.py "${onboard_args[@]}" >&2
 
     local VERSION
     VERSION="$(jq -r '.version' "$PKG_FILE")"
@@ -205,7 +212,8 @@ case "${1:-}" in
         ;;
     *)
         PACKAGE="$1"
-        PR_URL="$(cmd_create "$PACKAGE")"
+        VERSION="${2:-}"
+        PR_URL="$(cmd_create "$PACKAGE" "$VERSION")"
         cmd_wait "$PR_URL"
         cmd_merge "$PR_URL"
         echo "==> Successfully onboarded $PACKAGE" >&2

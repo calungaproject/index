@@ -39,11 +39,12 @@ def get_pypi_versions(package_name):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: onboard_package.py <package_name>")
+        print("Usage: onboard_package.py <package_name> [version]")
         sys.exit(1)
 
     ensure_dir()
     pkg_name = sys.argv[1]
+    requested_version = sys.argv[2] if len(sys.argv) > 2 else None
     pkg_file = get_pkg_path(pkg_name)
 
     if os.path.exists(pkg_file):
@@ -64,24 +65,31 @@ def main():
             non_semver.append(ver)
 
     semver.sort(key=Version)
-    latest = None
-    for ver in semver[::-1]:
-        try:
-            # multiple elements in list = multiple files
-            # yanked value is always consistent among all of them
-            yanked = pypi_versions[ver][0]["yanked"]
-        except (KeyError, IndexError):
-            yanked = True
-        if not yanked:
-            latest = ver
-            break
-    if latest is None:
-        print("Couldn't find any non-yanked version of the package")
-        sys.exit(1)
 
-    # ignore everything but the latest version
-    ignored = non_semver + [v for v in semver if v != latest]
-    package_data = {"version": latest, "ignored_versions": ignored}
+    if requested_version:
+        if requested_version not in pkg_versions:
+            print(f"Version {requested_version} not found on PyPI for {pkg_name}")
+            sys.exit(1)
+        target = requested_version
+    else:
+        target = None
+        for ver in semver[::-1]:
+            try:
+                # multiple elements in list = multiple files
+                # yanked value is always consistent among all of them
+                yanked = pypi_versions[ver][0]["yanked"]
+            except (KeyError, IndexError):
+                yanked = True
+            if not yanked:
+                target = ver
+                break
+        if target is None:
+            print("Couldn't find any non-yanked version of the package")
+            sys.exit(1)
+
+    # ignore everything but the target version
+    ignored = non_semver + [v for v in semver if v != target]
+    package_data = {"version": target, "ignored_versions": ignored}
     save_onboarded_package(pkg_name, package_data)
 
 
