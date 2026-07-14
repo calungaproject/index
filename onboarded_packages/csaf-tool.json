@@ -1,5 +1,5 @@
 {
-  "version": "0.3.1",
+  "version": "0.3.2",
   "sdist_url": "git+https://github.com/anthonyharrison/csaf",
   "ignored_versions": [
     "0.1.0",
