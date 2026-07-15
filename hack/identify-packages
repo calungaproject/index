@@ -50,9 +50,12 @@ extract_build_extra() {
         sed 's/^[[:space:]]*"//; s/"[[:space:]]*$//; /^$/d'
 }
 
-# Find JSON files that were added or modified compared to the revision
+# Find JSON files that were added or modified compared to the revision.
+# Use merge-base so that PR pipelines only see changes introduced by the PR
+# branch, not unrelated updates that landed on main since the branch point.
+DIFF_BASE="$(git merge-base HEAD "${REVISION}" 2>/dev/null || echo "${REVISION}")"
 set +e
-CHANGED_FILES="$(git diff --name-only --diff-filter=AM "${REVISION}" -- "${PACKAGES_DIR}/")"
+CHANGED_FILES="$(git diff --name-only --diff-filter=AM "${DIFF_BASE}" -- "${PACKAGES_DIR}/")"
 err="$?"
 set -e
 
@@ -70,7 +73,7 @@ for f in $CHANGED_FILES; do
             continue
         fi
 
-        OLD_VERSION="$(git show "${REVISION}:${f}" 2>/dev/null | extract_version || true)"
+        OLD_VERSION="$(git show "${DIFF_BASE}:${f}" 2>/dev/null | extract_version || true)"
 
         if [[ "$CURRENT_VERSION" != "$OLD_VERSION" ]]; then
             SDIST_URL="$(extract_sdist_url < "$f")"
