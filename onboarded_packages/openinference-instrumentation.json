@@ -1,6 +1,5 @@
 {
   "version": "0.1.37",
-  "build_extra": ["wrapt"],
   "ignored_versions": [
     "0.1.0",
     "0.1.1",
