@@ -1,13 +1,10 @@
 # Red Hat Trusted Libraries (RHTL) Getting Started Guide
 
-## Service Account Setup
-
-Create a service account in the [terms-based registry](https://access.redhat.com/terms-based-registry/accounts).
-
-  `<username>` is your ########|service-account-name
-
-  `<password>` is your token. It's important to keep this private.
-
+> **Note:** Authentication is no longer required to use the RHTL index.
+> Earlier versions of this guide covered service account setup, credentials in
+> pip/uv config, and `netrc` — those sections were removed because the index is
+> now publicly accessible. If you still have credentials configured, you can
+> drop them; they are not needed.
 
 ## Setting up your environment
 
@@ -27,7 +24,7 @@ You have a few options on where you place it, which will be detailed below.
 Here's an example `pip.conf` :
 ```
 [global]
-index-url = https://<username>:<password>@packages.redhat.com/trusted-libraries/python/
+index-url = https://packages.redhat.com/trusted-libraries/python/
 ```
 
 You can handle this locally by placing your `pip.conf` into your virtual environment or `venv`: `venv/pip.conf`
@@ -50,25 +47,7 @@ url = "https://packages.redhat.com/trusted-libraries/python"
 default = true
 ```
 
-You also need to export your credentials so `uv` can authenticate with the index.
-
-```bash
-export UV_INDEX_INTERNAL_PROXY_USERNAME=<username>
-export UV_INDEX_INTERNAL_PROXY_PASSWORD=<password>
-```
-
 To read more about `uv` configuration, look [here](https://docs.astral.sh/uv/concepts/indexes/).
-
-### netrc
-
-Some tools also use `netrc` and you may want to configure the index there.
-
-Sample `~/.netrc`
-```
-machine packages.redhat.com login <username> password <password>
-```
-
-For more information on using `netrc`, look [here](https://pip.pypa.io/en/stable/topics/authentication/#netrc-support).
 
 ## Using the index
 
