@@ -1,8 +1,28 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 <package-spec> [<package-spec> ...]"
+BUILDER_IMAGE_OVERRIDE=""
+PACKAGES=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --builder-image)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --builder-image requires an argument" >&2
+                exit 1
+            fi
+            BUILDER_IMAGE_OVERRIDE="$2"
+            shift 2
+            ;;
+        *)
+            PACKAGES+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ ${#PACKAGES[@]} -eq 0 ]]; then
+    echo "Usage: $0 [--builder-image <image>] <package-spec> [<package-spec> ...]"
     echo ""
     echo "Build from PyPI:"
     echo "  $0 typing_extensions==4.14.0"
@@ -10,24 +30,30 @@ if [[ $# -eq 0 ]]; then
     echo ""
     echo "Build from git (for packages with sdist_url):"
     echo "  $0 'csaf-tool @ git+https://github.com/anthonyharrison/csaf@0.3.2'"
+    echo ""
+    echo "Options:"
+    echo "  --builder-image <image>  Use a custom builder image instead of the one from the pipeline"
     exit 1
 fi
 
-PACKAGES=("$@")
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PIPELINE="${REPO_ROOT}/.tekton/build-pipeline.yaml"
 
 WHEEL_SERVER_URL="https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/"
 
-BUILD_TASK_BUNDLE="$(
-    < "${PIPELINE}" \
-    yq '.spec.tasks[] | select(.name == "build-wheels").taskRef.params[] | select(.name == "bundle") | .value'
-)"
+if [[ -n "${BUILDER_IMAGE_OVERRIDE}" ]]; then
+    BUILDER_IMAGE="${BUILDER_IMAGE_OVERRIDE}"
+else
+    BUILD_TASK_BUNDLE="$(
+        < "${PIPELINE}" \
+        yq '.spec.tasks[] | select(.name == "build-wheels").taskRef.params[] | select(.name == "bundle") | .value'
+    )"
 
-BUILDER_IMAGE="$(
-    tkn bundle list -o json "${BUILD_TASK_BUNDLE}" | \
-    yq -r '.spec.steps[] | select(.name == "build-wheels") | .image'
-)"
+    BUILDER_IMAGE="$(
+        tkn bundle list -o json "${BUILD_TASK_BUNDLE}" | \
+        yq -r '.spec.steps[] | select(.name == "build-wheels") | .image'
+    )"
+fi
 OUTPUT_DIR="${REPO_ROOT}/output"
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "${WORKDIR}"' EXIT
