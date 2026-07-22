@@ -1,0 +1,32 @@
+name: Daily Slack Available Packages
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 9AM EST
+    - cron: '0 14 * * *'
+
+jobs:
+  report-available-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: setup python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+
+      - name: install python deps
+        run: pip install --require-hashes -r hack/requirements.txt
+
+      - name: run generate-available-packages
+        run: |
+          python hack/generate-available-packages.py > available_packages.json
+          echo "Generated package data json"
+
+      - name: post to slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python hack/post-to-slack.py available_packages.json
