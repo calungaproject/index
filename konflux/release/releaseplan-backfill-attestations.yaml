@@ -1,0 +1,12 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  name: calunga-backfill-attestations
+  labels:
+    release.appstudio.openshift.io/auto-release: 'false'
+    release.appstudio.openshift.io/standing-attribution: 'true'
+spec:
+  application: calunga-v2-index-main
+  releaseGracePeriodDays: 7
+  target: rhtap-releng-tenant
