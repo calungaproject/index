@@ -67,7 +67,7 @@ Requires Pulp credentials and configuration env vars.
 
 ## Debugging Pipeline Failures
 
-When debugging Konflux pipeline failures (wheel-check failures, build errors, release issues), always consult `.claude/agents/debug-package.md` first. It contains the full diagnostic procedure, including kubearchive commands for retrieving logs from garbage-collected PipelineRuns (older than ~5 days). Do not attempt generic debugging approaches (e.g. `oc get pipelinerun`) without first checking whether the resources have been GC'd and switching to `kubectl ka` if needed.
+When debugging Konflux pipeline failures (wheel-check failures, build errors, release issues), always consult `.claude/agents/debug-package.md` first. It contains the full diagnostic procedure. Always use `kubectl ka get` (not `oc get`) for PipelineRuns, TaskRuns, and pods — the kubearchive plugin transparently queries both the live cluster and the archive, so there is no need to check liveness first.
 
 ## Commit Message Convention
 
