@@ -38,7 +38,7 @@ PACKAGES_DIR="onboarded_packages"
 
 ## Kubearchive
 
-PipelineRuns, TaskRuns, and pods are garbage-collected from the live cluster after ~5 days. **Kubearchive** stores archived copies. Use the `kubectl ka` plugin to query them.
+PipelineRuns, TaskRuns, and pods are garbage-collected from the live cluster. **Kubearchive** stores archived copies. The `kubectl ka` plugin transparently queries both the live cluster and the archive, so always use it instead of `oc get` for these resources.
 
 ### Setup (one-time)
 
@@ -74,11 +74,11 @@ Note: `kubectl ka get` returns results wrapped in a list (`{items: [...]}`), eve
 
 ### When to use Kubearchive
 
-- When `oc get pipelinerun <name>` returns NotFound
-- When investigating failures older than ~5 days
-- To get pod logs for failed TaskRuns that have been cleaned up
+**Always use `kubectl ka get` instead of `oc get` for PipelineRuns, TaskRuns, and pods.** The kubearchive plugin transparently queries both the live cluster and the kubearchive archive, so there is no need to check the live cluster first. This eliminates the two-step "try `oc get`, fall back to `kubectl ka`" pattern.
 
-### Debugging a GC'd PipelineRun
+Use `oc get` only for resources that kubearchive does not archive (Snapshots, Releases, and other Konflux CRDs).
+
+### Debugging a failed PipelineRun
 
 ```bash
 # 1. Get PipelineRun status and child TaskRuns
@@ -99,7 +99,7 @@ kubectl ka logs pods/<pod-name> -n calunga-tenant -c <step-name>
 
 ## Diagnostic Commands
 
-Before running any `oc` command, verify login: `oc whoami`
+Before running any cluster command, verify login: `oc whoami`
 
 ### Stage 1: Find the Commit
 
@@ -111,12 +111,10 @@ COMMIT_TITLE=$(git log -1 --format="%s" "$COMMIT_SHA")
 ### Stage 2: Find the On-Push PipelineRun
 
 ```bash
-oc get pipelineruns -n calunga-tenant \
+kubectl ka get pipelineruns.v1.tekton.dev -n calunga-tenant \
   -l "pipelinesascode.tekton.dev/sha=$COMMIT_SHA" \
   -o json | jq '.items[] | {name: .metadata.name, status: .status.conditions[-1].reason}'
 ```
-
-Note: PipelineRuns may be garbage-collected after ~5 days.
 
 ### Stage 3: Find the Snapshot
 
@@ -180,9 +178,9 @@ Release `.status.conditions[].type == "Released"` values:
 
 ### 1. No Snapshot
 
-**Symptoms**: No snapshot found for the commit SHA. PipelineRun may be missing too (GC'd) or may show a failed status.
+**Symptoms**: No snapshot found for the commit SHA. PipelineRun may be missing or may show a failed status.
 
-**Root cause**: On-push pipeline never ran (Pipelines-as-Code misconfiguration, webhook failure) or it failed (build error, resource limits, transient image pull errors). Old PipelineRuns get garbage-collected.
+**Root cause**: On-push pipeline never ran (Pipelines-as-Code misconfiguration, webhook failure) or it failed (build error, resource limits, transient image pull errors).
 
 **Remediation**: If the original PipelineRun failed due to a transient error (e.g. registry 503, image pull backoff), retry it for the original commit — see [Retrying a Failed On-Push Pipeline](#retrying-a-failed-on-push-pipeline) below. If there was never a PipelineRun at all, trigger a new build by making a new commit that touches the package file:
 ```bash
@@ -407,7 +405,7 @@ done
 - **Use `>|` for file overwrites in zsh.** Plain `>` fails with "file exists" when `noclobber` is set.
 - **Snapshots may have multiple releases.** Always query as an array and iterate: `jq '[.items[] | select(...)]'` then `jq -c '.[]' | while read -r rel`.
 - **Timed-out releases often succeed eventually.** A release stuck at "Progressing" for 10+ minutes usually finishes — it's just slow, not broken. Check back later.
-- **PipelineRuns are garbage-collected.** After ~5 days, old PipelineRuns are deleted. The snapshot still exists and references the build, but you can't inspect the PipelineRun directly.
+- **PipelineRuns are garbage-collected.** Old PipelineRuns are eventually deleted from the live cluster. Always use `kubectl ka get` for PipelineRuns/TaskRuns/pods — it transparently checks both live and archived resources.
 - **Do NOT use the Konflux UI "Rerun" button for on-push pipelines.** It re-resolves `{{revision}}` to the latest commit on main, causing `identify-packages` to diff the wrong commits. Use the manual retry procedure instead.
 - **Batch onboarding causes "Released in newer Snapshot".** When many packages are committed in quick succession, only the latest snapshot gets auto-released. All earlier snapshots (each containing a unique package build) need manual Release CRs. This has been mitigated by adding `test.appstudio.openshift.io/ignore-supersession: "true"` to the on-push PipelineRun annotation (commit `adbf127f`), but older snapshots from before the fix may still be affected.
 - **Name normalization is real.** Always check Pulp with both dash and dot variants. Common prefixes: `backports`, `jaraco`, `zope`, `ruamel`.
