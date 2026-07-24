@@ -1,0 +1,2 @@
+env:
+  PYARROW_BUNDLE_ARROW_CPP: "1"
