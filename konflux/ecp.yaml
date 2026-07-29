@@ -46,16 +46,21 @@ spec:
           - tasks.required_tasks_found:init
           # TODO: No tests are executed during the build.
           - test.test_data_found
-          # TODO: Need to make sure our build task becomes trusted.
-          - trusted_task.trusted
-          - slsa_build_scripted_build.image_built_by_trusted_task
+          # CTRL-004: trusted_task and slsa_build_scripted_build exclusions removed.
+          # build-python-wheels-oci-ta is now trusted via trusted_task_rules in
+          # github.com/calungaproject/plumbing//policy-data
           # TODO: OCI artifacts don't have labels.
           - labels
         include:
           - '@redhat'
       data:
-        - github.com/release-engineering/rhtap-ec-policy//data
+        # CTRL-004: temporary fork until release-engineering/rhtap-ec-policy#218 merges (~6/30)
+        - github.com/simonbaird/rhtap-ec-policy//data?ref=seed-new-trusted-task-data
         - oci::quay.io/konflux-ci/tekton-catalog/data-acceptable-bundles:latest
+        # CTRL-004: trusted_task_rules for Calunga-owned build task
+        - github.com/calungaproject/plumbing//policy-data
+      ruleData:
+        trusted_task_rules_enabled: true
       name: Default
       policy:
         - oci::quay.io/enterprise-contract/ec-release-policy:konflux
