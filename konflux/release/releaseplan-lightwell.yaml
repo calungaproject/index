@@ -1,0 +1,13 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  name: calunga-lightwell
+  labels:
+    release.appstudio.openshift.io/auto-release: 'false'
+    release.appstudio.openshift.io/standing-attribution: 'true'
+    release.appstudio.openshift.io/releasePlanAdmission: 'calunga-push-to-pulp-lightwell'
+spec:
+  application: calunga-v2-index-main
+  releaseGracePeriodDays: 7
+  target: rhtap-releng-tenant
