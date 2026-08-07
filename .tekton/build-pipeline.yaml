@@ -162,7 +162,33 @@ spec:
           - name: kind
             value: task
         resolver: bundles
+    - name: check-source-origin
+      params:
+        - name: PACKAGES
+          value: $(tasks.identify-packages.results.SCRIPT_OUTPUT_ARRAY)
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/calungaproject/plumbing
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/check-source-origin.yaml
+      when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+        - input: "$(tasks.identify-packages.results.SCRIPT_OUTPUT)"
+          operator: in
+          values: ["has-packages"]
+      workspaces:
+        - name: basic-auth
+          workspace: git-auth
     - name: build-wheels
+      runAfter:
+        - check-source-origin
       params:
         # TODO: We probably want identify-packages to create a file, and we can use that as the
         # input for build-wheels. Must change the build-wheels script to accept a packages file
