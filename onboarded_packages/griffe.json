@@ -1,5 +1,5 @@
 {
-  "version": "1.12.1",
+  "version": "2.2.0",
   "sdist_url": "git+https://github.com/mkdocstrings/griffe",
   "ignored_versions": [
     "0.1.0",
