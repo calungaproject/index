@@ -1,5 +1,5 @@
 {
-  "version": "1.6.2",
+  "version": "1.6.3",
   "sdist_url": "git+https://github.com/delta-io/delta-rs",
   "git_tag_template": "python-v{version}",
   "ignored_versions": [
