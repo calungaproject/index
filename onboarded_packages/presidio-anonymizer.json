@@ -1,5 +1,5 @@
 {
-  "version": "2.2.364",
+  "version": "2.2.358",
   "sdist_url": "git+https://github.com/microsoft/presidio.git",
   "ignored_versions": [
     "1.9.0",
