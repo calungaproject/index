@@ -22,6 +22,9 @@ jobs:
         run: pip install --require-hashes -r hack/requirements.txt
 
       - name: run generate-available-packages
+        env:
+          SERVICE_ACCOUNT_USERNAME: ${{ secrets.SERVICE_ACCOUNT_USERNAME }}
+          SERVICE_ACCOUNT_PASSWORD: ${{ secrets.SERVICE_ACCOUNT_PASSWORD }}
         run: |
           python hack/generate-available-packages.py > available_packages.json
           echo "Generated package data json"
