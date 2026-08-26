@@ -203,7 +203,7 @@ spec:
           - name: name
             value: sast-snyk-check-sdist
           - name: bundle
-            value: quay.io/redhat-user-workloads/calunga-tenant/task-sast-snyk-check-sdist@sha256:4a67db12a34945392a1d4bd0adb336262db76d676ae451aed3193d14ba55536e
+            value: quay.io/redhat-user-workloads/calunga-tenant/task-sast-snyk-check-sdist@sha256:386dc790155634307fe8d522071c9b1be4086532ed499610979187efa77177ae
           - name: kind
             value: task
         resolver: bundles
