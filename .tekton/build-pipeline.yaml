@@ -177,9 +177,6 @@ spec:
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: WHEEL_SERVER_URL
           value: https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/
-      workspaces:
-        - name: netrc
-          workspace: netrc
       taskRef:
         params:
           - name: name
@@ -347,6 +344,4 @@ spec:
             - "false"
   workspaces:
     - name: git-auth
-      optional: true
-    - name: netrc
       optional: true
