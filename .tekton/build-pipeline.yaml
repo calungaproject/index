@@ -177,6 +177,8 @@ spec:
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: WHEEL_SERVER_URL
           value: https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/
+        - name: DENIED_PACKAGES_FILE
+          value: denied_packages.txt
       taskRef:
         params:
           - name: name
