@@ -23,8 +23,10 @@ spec:
           - test.no_erred_tests:ecosystem-cert-preflight-checks
           # TODO: Setup snyk.
           - test.no_skipped_tests:sast-snyk-check-sdist
-          # TODO: Does it make sense to restrict to weekdays?
+          # Calunga auto-releases continuously; do not block Fri/weekend/holiday
+          # windows from rhtap-ec-policy disallowed_weekdays / disallowed_dates.
           - schedule.weekday_restriction
+          - schedule.date_restriction
           # Does a source container image make sense here? Where would we deploy it? The source
           # for the package itself is released to the python index. However, the source of its
           # dependencies are not. Should it go somewhere?
@@ -56,6 +58,9 @@ spec:
       data:
         - github.com/release-engineering/rhtap-ec-policy//data
         - oci::quay.io/konflux-ci/tekton-catalog/data-acceptable-bundles:latest
+        # Allow Calunga custom Tekton bundles (build-python-wheels, snyk-sdist, npm).
+        # Required now that rhtap-ec-policy sets trusted_task_rules_enabled: true.
+        - github.com/calungaproject/plumbing//policy-data?ref=main
       name: Default
       policy:
         - oci::quay.io/enterprise-contract/ec-release-policy:konflux
