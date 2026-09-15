@@ -1,0 +1,29 @@
+---
+# Embed OpenSSL in _rust.abi3.so, the way the official PyPI wheels are built,
+# instead of linking it dynamically and letting auditwheel bundle libcrypto and
+# libssl beside it.
+#
+# The dynamic path ships a broken wheel. OpenSSL dlopens its providers, so
+# auditwheel -- which only follows DT_NEEDED -- never sees ossl-modules/
+# legacy.so and does not bundle it, and the libcrypto it does bundle has a
+# MODULESDIR baked in that points at builder paths absent wherever the wheel is
+# installed. OSSL_PROVIDER_load(NULL, "legacy") fails at import and Blowfish,
+# CAST5, IDEA, SEED, ARC4 and RC2 all raise UnsupportedAlgorithm. Since 50.x
+# that load failure is only a warning, so the import succeeds and the wheel
+# passes wheel-check with six ciphers dead.
+#
+# Prerequisite: the builder image must provide the static, no-module OpenSSL at
+# this prefix -- added in the plumbing builder (build-openssl-static.sh). It is
+# a second OpenSSL, deliberately kept off PKG_CONFIG_PATH and out of ldconfig,
+# so only packages that set OPENSSL_DIR explicitly can reach it. The shared
+# OpenSSL everything else links against is untouched.
+#
+# static-openssl is a version-independent symlink, so bumping OpenSSL in the
+# builder does not require a change here.
+#
+# Note: cryptography is currently in denied_packages.txt -- 1dcf8263 removed it
+# and six others "due to incompatible native library bundling". This file is
+# what has to be in place before it can be re-onboarded.
+env:
+  OPENSSL_DIR: /opt/_internal/static-openssl
+  OPENSSL_STATIC: "1"
