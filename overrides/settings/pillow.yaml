@@ -1,0 +1,20 @@
+---
+# Build Pillow with the same PEP 517 config settings the official PyPI wheels
+# use (see Pillow's pyproject.toml [tool.cibuildwheel] config-settings).
+#
+# Pillow's setup.py does NOT vendor raqm by default: without these settings it
+# takes the "system raqm" path, finds no libraqm, and silently ships an
+# _imagingft with no HarfBuzz -> no complex-script text shaping, unlike the
+# PyPI wheel. These settings turn on the vendored raqm + FriBiDi shim, which
+# links HarfBuzz into _imagingft (auditwheel then bundles it). imagequant is
+# disabled to match PyPI (it is not built into the builder image either).
+#
+# Prerequisite: the builder image must provide HarfBuzz (with hb-ft) and its
+# headers -- added in the plumbing builder (freetype built without HarfBuzz,
+# then HarfBuzz built with FreeType). Without that, raqm=vendor fails to build.
+config_settings:
+  raqm:
+    - enable
+    - vendor
+  fribidi: vendor
+  imagequant: disable
