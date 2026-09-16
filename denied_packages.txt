@@ -5,6 +5,5 @@ pillow
 pyarrow
 freeze-core
 numpy
-cryptography
 lxml
 cffi
