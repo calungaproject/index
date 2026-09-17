@@ -3,4 +3,3 @@
 # One package name per line (case-insensitive, normalized).
 pyarrow
 freeze-core
-cryptography
