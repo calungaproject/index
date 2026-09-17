@@ -5,4 +5,3 @@ pyarrow
 freeze-core
 numpy
 cryptography
-cffi
