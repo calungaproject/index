@@ -30,6 +30,7 @@ echo "::group::Finding eligible PRs"
 
 ELIGIBLE_PRS=$(gh pr list \
     --state open \
+    --limit 200 \
     --label "automated build" \
     --json number,title,author,headRefOid \
     --jq '[.[] | select(.author.login == "app/github-actions")]')
