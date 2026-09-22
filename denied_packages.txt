@@ -1,5 +1,4 @@
 # Packages listed here will NOT be collected or released to Pulp,
 # even if Fromager builds them as transitive dependencies.
 # One package name per line (case-insensitive, normalized).
-pyarrow
 freeze-core
