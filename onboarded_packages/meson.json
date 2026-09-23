@@ -1,5 +1,5 @@
 {
-  "version": "1.12.0",
+  "version": "1.12.1",
   "sdist_url": "git+https://github.com/mesonbuild/meson",
   "ignored_versions": [
     "0.29.0.dev1",
