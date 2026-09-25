@@ -1,0 +1,203 @@
+#!/bin/bash
+set -euo pipefail
+
+# Select the fromager constraint files that apply to the packages this build is
+# about to build.
+#
+# fromager resolves each requirement to the newest version that matches it and
+# never backtracks, and it resolves against today's PyPI. Building a version
+# that is not the newest therefore resolves its dependencies against a world
+# that moved on after that version was released, and the result can be a graph
+# with no solution. A constraints file hands fromager the answer a backtracking
+# resolver would have found. Generate one with hack/generate-constraints.py.
+#
+# Constraint files are keyed by package and version, most specific first:
+#
+#   overrides/constraints/<package>-<version>.txt
+#   overrides/constraints/<package>.txt
+#
+# the same convention the builder's patches directory uses. Version scoping is
+# not cosmetic: the pins that make one version resolve routinely contradict
+# another version of the same package, so a package-wide file becomes a trap
+# the next time that package is bumped.
+#
+# Emits a JSON array of repo-relative paths for CONSTRAINT_FILES. Packages with
+# no constraint file contribute nothing, so the common case is an empty array
+# and no behaviour change.
+
+PACKAGES_DIR="onboarded_packages"
+CONSTRAINTS_DIR="overrides/constraints"
+REVISION="$1"
+RESULT_FILE="$2"
+STATUS_FILE="$3"
+
+HACK_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "[DEBUG] REVISION=${REVISION} RESULT_FILE=${RESULT_FILE}" >&2
+
+# Ask identify-packages what is being built rather than re-deriving it here.
+# Duplicating the diff logic would let the two tasks disagree about the build
+# set, which would be silent: constraints would simply not be applied.
+PACKAGES_FILE="$(mktemp)"
+PACKAGES_STATUS_FILE="$(mktemp)"
+trap 'rm -f "${PACKAGES_FILE}" "${PACKAGES_STATUS_FILE}"' EXIT
+
+"${HACK_DIR}/identify-packages" "${REVISION}" "${PACKAGES_FILE}" "${PACKAGES_STATUS_FILE}" >&2
+
+# Split the JSON array identify-packages produced into one entry per line.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+parse_entries() {
+    sed -e 's/^\[//' -e 's/\]$//' | \
+        tr ',' '\n' | \
+        sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//' -e '/^$/d'
+}
+
+# Extract the "version" value from a JSON file using grep/sed.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+extract_version() {
+    grep -o '"version": *"[^"]*"' | sed 's/.*"version": *"\([^"]*\)".*/\1/' || true
+}
+
+CONSTRAINT_FILES=""
+ALL_PACKAGES=""
+CONSTRAINED_PACKAGE=""
+while read -r entry; do
+    [[ -z "$entry" ]] && continue
+
+    # Entries are either "<name>==<version>" or, for packages carrying an
+    # sdist_url, "<name> @ <url>@<tag>".
+    if [[ "$entry" == *" @ "* ]]; then
+        name="${entry%% @*}"
+    else
+        name="${entry%%==*}"
+    fi
+
+    # Key on the onboarded version rather than on whatever trails the entry.
+    # For an sdist_url package the entry ends in a git tag, and git_tag_template
+    # means that tag need not equal the version ("v0.3.2" vs "0.3.2"). The JSON
+    # is the same source identify-packages read, so the two cannot disagree.
+    package_file="${PACKAGES_DIR}/${name}.json"
+    version=""
+    if [[ -f "$package_file" ]]; then
+        version="$(extract_version < "$package_file")"
+    fi
+
+    candidates="${CONSTRAINTS_DIR}/${name}.txt"
+    if [[ -n "$version" ]]; then
+        candidates="${CONSTRAINTS_DIR}/${name}-${version}.txt"$'\n'"${candidates}"
+    fi
+
+    ALL_PACKAGES="${ALL_PACKAGES}${name}"$'\n'
+
+    matched=""
+    while read -r candidate; do
+        if [[ -f "$candidate" ]]; then
+            echo "Using constraints for ${name} ${version}: ${candidate}" >&2
+            CONSTRAINT_FILES="${CONSTRAINT_FILES}${candidate}"$'\n'
+            CONSTRAINED_PACKAGE="$name"
+            matched="$candidate"
+            break
+        fi
+    done <<< "$candidates"
+
+    # A file named for a version this build is not building is invisible to the
+    # lookup above: no match, no constraints, build proceeds. That is the safe
+    # direction, but it is also what a file left behind by a version bump and a
+    # mistyped version both look like, so say something rather than nothing.
+    if [[ -z "$matched" ]]; then
+        for other in "${CONSTRAINTS_DIR}/${name}"-*.txt; do
+            [[ -f "$other" ]] || continue
+            # The glob also matches a longer package name sharing this prefix:
+            # django- catches django-508-plugins-1.0.txt, whose suffix even
+            # starts with a digit. Require a whole version, which none of the
+            # 1567 onboarded packages spells with a hyphen.
+            suffix="${other#"${CONSTRAINTS_DIR}/${name}-"}"
+            suffix="${suffix%.txt}"
+            [[ "$suffix" =~ ^[0-9] && "$suffix" != *-* ]] || continue
+            echo "WARNING: ${other} exists, but ${name} is being built at" \
+                 "${version}, so it will not be applied. Rename it or" \
+                 "regenerate with hack/generate-constraints.py." >&2
+        done
+    fi
+done <<< "$(parse_entries < "${PACKAGES_FILE}")"
+
+CONSTRAINT_FILES="$(echo -n "$CONSTRAINT_FILES" | sed '/^$/d')"
+
+# Refuse to emit more than one path. build-wheels advertises -c as repeatable
+# and emits one --constraints-file per file, but fromager declares that option
+# with type=str and no multiple=True, so every flag after the first overwrites
+# the previous one and only the last file is ever read -- the rest are dropped
+# with no warning and the build goes green. Stop instead: a constraints file
+# that is silently ignored is the exact failure these files exist to prevent.
+#
+# Merging them here is not a safe substitute. Pins bind by name across the whole
+# build, so two packages' files can pin the same dependency to different
+# versions and there is no basis for picking a winner.
+#
+# This is rare enough to be worth failing on rather than designing around: of
+# the last 2000 commits touching onboarded_packages/, 1996 changed exactly one
+# JSON and only 3 changed more than one. A build_extra co-build can also bring
+# a second package in, and that pair is not splittable -- identify-packages
+# emits the extras alongside whatever pulled them in, so no commit builds one
+# without the other. Say so rather than advising a split that cannot be made.
+if [[ -n "${CONSTRAINT_FILES}" ]] && [[ "$(printf '%s\n' "${CONSTRAINT_FILES}" | wc -l)" -gt 1 ]]; then
+    echo "ERROR: this build needs more than one constraints file:" >&2
+    echo "${CONSTRAINT_FILES}" >&2
+    echo "fromager reads only the last one, so the rest would be ignored" >&2
+    echo "silently." >&2
+    echo "" >&2
+    echo "If one commit changed several onboarded_packages/ files, split it so" >&2
+    echo "that each of these packages builds in a commit of its own." >&2
+    echo "" >&2
+    echo "If one of them is a build_extra of another, they are always built" >&2
+    echo "together and no commit can separate them. Reconcile the pins into one" >&2
+    echo "file and delete the other -- a single file is applied to every package" >&2
+    echo "in the build regardless. If the pins genuinely contradict, there is no" >&2
+    echo "fix at this layer: it needs per-package constraints in fromager." >&2
+    exit 1
+fi
+
+# Past the guard above there is at most one file, but one file is still applied
+# to every package in the build: build-wheels passes --constraints-file to each
+# package's fromager run. Constraints bind by name across a whole resolution, so
+# a package with no file of its own can still be resolved under someone else's
+# pins, and nothing downstream reports that.
+#
+# generate-constraints.py cannot catch it either -- it resolves only the package
+# the file is named for, and has no idea a second one will be co-built. So this
+# warning is the only signal that exists.
+#
+# No exemption for build_extra. That field is for dependencies the parent does
+# not declare, so the extra is normally outside the parent's resolution and the
+# pins reaching it is a real change, not a formality. Those pairs also cannot be
+# split into separate commits, which makes the warning more useful there, not
+# less.
+if [[ -n "${CONSTRAINT_FILES}" ]] && [[ -n "${CONSTRAINED_PACKAGE}" ]]; then
+    others="$(printf '%s' "${ALL_PACKAGES}" | sed '/^$/d' | grep -vFx "${CONSTRAINED_PACKAGE}" || true)"
+    if [[ -n "${others}" ]]; then
+        echo "WARNING: ${CONSTRAINT_FILES} was selected for ${CONSTRAINED_PACKAGE}," >&2
+        echo "but this build also builds:" >&2
+        while read -r other; do
+            [[ -n "$other" ]] && echo "  ${other}" >&2
+        done <<< "${others}"
+        echo "fromager applies the file to each of them too, so they resolve" >&2
+        echo "under these pins. That is not verified by anything." >&2
+    fi
+fi
+
+echo "Constraint files to apply:"
+echo "${CONSTRAINT_FILES}"
+
+CONSTRAINT_FILES_JSON='[]'
+if [[ -n "$CONSTRAINT_FILES" ]]; then
+    CONSTRAINT_FILES_JSON="$(<<< "${CONSTRAINT_FILES}" sed -e ':a;N;$!ba;s/\n/", "/g' | sed -e 's/^/\["/' -e 's/$/"\]/')"
+fi
+
+echo "${CONSTRAINT_FILES_JSON}" | tee "${RESULT_FILE}"
+
+if [[ "${CONSTRAINT_FILES_JSON}" == "[]" ]]; then
+    printf 'no-constraints' | tee "${STATUS_FILE}"
+else
+    printf 'has-constraints' | tee "${STATUS_FILE}"
+fi
+echo
