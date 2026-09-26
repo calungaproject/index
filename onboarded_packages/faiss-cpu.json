@@ -1,0 +1,24 @@
+{
+    "version": "1.9.0",
+    "sdist_url": "git+https://github.com/faiss-wheels/faiss-wheels.git",
+    "ignored_versions": [
+        "1.5.3",
+        "1.6.0",
+        "1.6.1",
+        "1.6.3",
+        "1.6.4",
+        "1.6.4.post2",
+        "1.6.5",
+        "1.7.0",
+        "1.7.1",
+        "1.7.1.post1",
+        "1.7.1.post2",
+        "1.7.1.post3",
+        "1.7.2",
+        "1.7.3",
+        "1.7.4",
+        "1.8.0",
+        "1.8.0.post1"
+    ],
+    "git_tag_template": "v{version}"
+}
