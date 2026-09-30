@@ -1,5 +1,6 @@
 {
     "version": "2.2b0",
+    "build_extra": ["google-auth"],
     "ignored_versions": [
         "0.0.1",
         "0.1.3",
