@@ -1,5 +1,6 @@
 {
     "version": "1.0.0",
+		"build_extra": ["boto3"],
     "ignored_versions": [
         "0.0.1.dev0",
         "0.0.1.dev1",
