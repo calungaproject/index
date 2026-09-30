@@ -36,11 +36,6 @@ cmd_create() {
         exit 1
     fi
 
-    if [[ -f "$PKG_FILE" ]]; then
-        echo "ERROR: $PKG_FILE already exists. Package is already onboarded." >&2
-        exit 1
-    fi
-
     log "Running onboarding script for $PACKAGE..."
     python hack/onboard_package.py "$PACKAGE" >&2
 
