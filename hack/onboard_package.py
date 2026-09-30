@@ -47,8 +47,7 @@ def main():
     pkg_file = get_pkg_path(pkg_name)
 
     if os.path.exists(pkg_file):
-        print("Package is already onboarded")
-        sys.exit(1)
+        print("Package is already onboarded, regenerating")
 
     pypi_versions = get_pypi_versions(pkg_name)
     pkg_versions = list(pypi_versions.keys())
