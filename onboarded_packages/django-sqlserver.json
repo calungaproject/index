@@ -1,5 +1,6 @@
 {
     "version": "1.11",
+    "build_extra": ["django"],
     "ignored_versions": [
         "0.1a",
         "0.2b",
