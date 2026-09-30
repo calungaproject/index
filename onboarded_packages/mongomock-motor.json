@@ -1,5 +1,6 @@
 {
     "version": "0.0.36",
+    "build_extra": ["typing-extensions"],
     "ignored_versions": [
         "0.0.1.dev0",
         "0.0.1",
