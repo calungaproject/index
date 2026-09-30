@@ -1,5 +1,6 @@
 {
     "version": "0.5.0",
+    "build_extra": ["langgraph"],
     "ignored_versions": [
         "0.0.1",
         "0.0.2",
