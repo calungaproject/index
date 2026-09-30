@@ -1,5 +1,6 @@
 {
     "version": "1.150.0",
+    "build_extra": ["google-cloud-bigquery-storage"],
     "ignored_versions": [
         "0.3.0",
         "0.3.1",
