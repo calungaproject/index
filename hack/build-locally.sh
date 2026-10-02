@@ -61,8 +61,12 @@ trap 'rm -rf "${WORKDIR}"' EXIT
 rm -rf "${OUTPUT_DIR:?}"/*
 mkdir -p "${OUTPUT_DIR}"
 
-echo "Pulling builder image..."
-podman pull "${BUILDER_IMAGE}"
+if podman image exists "${BUILDER_IMAGE}"; then
+    echo "Using local builder image: ${BUILDER_IMAGE}"
+else
+    echo "Pulling builder image..."
+    podman pull "${BUILDER_IMAGE}"
+fi
 
 echo "Building wheels: ${PACKAGES[*]}"
 podman run -it --rm \
