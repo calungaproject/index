@@ -1,0 +1,40 @@
+name: Validate JSON Files
+
+on:
+  pull_request:
+    paths:
+      - 'onboarded_packages/*.json'
+
+jobs:
+  validate-json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: validate JSON files
+        run: |
+          echo "Validating JSON files in onboarded_packages/"
+          invalid_files=()
+
+          for file in onboarded_packages/*.json; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              if ! python -m json.tool "$file" > /dev/null 2>&1; then
+                echo "❌ Invalid JSON: $file"
+                invalid_files+=("$file")
+              else
+                echo "✅ Valid JSON: $file"
+              fi
+            fi
+          done
+
+          if [ ${#invalid_files[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ Found ${#invalid_files[@]} invalid JSON file(s):"
+            printf '%s\n' "${invalid_files[@]}"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ All JSON files are valid!"
