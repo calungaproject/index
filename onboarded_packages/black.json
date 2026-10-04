@@ -1,5 +1,5 @@
 {
-  "version": "23.10.1",
+  "version": "26.10.0",
   "build_extra": [
     "aiohttp"
   ],
