@@ -176,6 +176,32 @@ def resolve(spec: str, image: str) -> list[dict]:
     return json.loads(result.stdout)["install"]
 
 
+# fromager's wording when it genuinely cannot resolve. Anything else out of a
+# failed --sdist-only run is the verifier falling over, not a verdict on the
+# pins: yandexcloud 0.410.0 fails it with "invalid or unparsed metadata"
+# because --sdist-only reads metadata from the sdist, while a real build reads
+# it from the wheel and succeeds. Treating that as "the pins are wrong" told
+# the user the opposite of the truth.
+RESOLUTION_FAILURE_MARKERS = (
+    "no single version meets all requirements",
+    "could not produce a pip compatible constraints file",
+    "unable to resolve requirement specifier",
+    "could not find a version that satisfies",
+    "resolutionimpossible",
+    "no matching distribution found",
+)
+
+
+def is_resolution_failure(stderr: str) -> bool:
+    """Whether a failed resolve was fromager rejecting the versions on offer.
+
+    A false negative here is the safe direction: an unrecognised error is
+    reported as unverifiable rather than as proof the pins are wrong.
+    """
+    haystack = stderr.lower()
+    return any(marker in haystack for marker in RESOLUTION_FAILURE_MARKERS)
+
+
 def bootstrap_graph(
     spec: str, image: str, constraints: str | None
 ) -> tuple[dict[str, tuple[str, frozenset[str]]] | None, str]:
@@ -240,8 +266,8 @@ def bootstrap_graph(
 
 
 def verify_pins(
-    spec: str, image: str, content: str, pins: list[tuple[str, str]]
-) -> tuple[list[str], list[str], bool]:
+    spec: str, image: str, content: str, pins: list[tuple[str, str]], full: bool
+) -> tuple[list[str] | None, list[str] | None, bool]:
     """Report what the constraints file actually changes about the resolution.
 
     Resolves twice, with and without the file, and diffs the two graphs. A pin
@@ -251,6 +277,8 @@ def verify_pins(
     copy the index serves from then on -- so those are reported separately.
 
     Returns the two lists and whether the package resolved without the file.
+    The lists are None when the check could not run at all, which is distinct
+    from running and finding no changes.
     """
     print(
         "Verifying what the pins change (resolving twice; minutes on a large graph)",
@@ -259,14 +287,56 @@ def verify_pins(
     before, before_error = bootstrap_graph(spec, image, None)
     after, after_error = bootstrap_graph(spec, image, content)
 
-    # The file failing to resolve is the one outcome that is always fatal: these
-    # pins are supposed to be the answer, and they are not.
+    # A failed resolve with the file is fatal only when fromager actually
+    # rejected the versions. If it fell over for some other reason the verifier
+    # has no verdict to give, and saying "these pins do not work" would be a
+    # guess -- one that is wrong whenever --sdist-only cannot read metadata a
+    # real build can.
+    if after is None and is_resolution_failure(after_error):
+        hint = "The file would not fix the build."
+        if before is None and not full:
+            # Pinning more only helps when the not-newest subset was too small
+            # to settle the conflict. --full also pins the install closure,
+            # which can contradict a build-system requirement, so it is offered
+            # as something to try rather than as the answer.
+            hint += (
+                " --full pins the whole resolution rather than only the"
+                " not-newest packages and may do better, but check the result:"
+                " it pins from the install closure, and those pins bind across"
+                " build-system edges too."
+            )
+        sys.exit(f"these pins do not make {spec} resolve:\n{after_error}\n\n{hint}")
+
     if after is None:
-        sys.exit(
-            f"these pins do not make {spec} resolve:\n{after_error}\n\n"
-            "The file would not fix the build. Try --full, which pins the whole "
-            "resolution rather than only the not-newest packages."
+        # Unverifiable, not wrong. Say so plainly and let the file through --
+        # the caller marks it unverified so nobody mistakes silence for a pass.
+        print(
+            f"warning: could not verify these pins -- fromager failed for a "
+            f"reason that is not a resolution conflict, so the check has no "
+            f"verdict to give. Confirm with a real build:\n"
+            f"  hack/build-locally.sh -c <file> '{spec}'\n"
+            f"fromager said:\n{after_error}",
+            file=sys.stderr,
         )
+        return None, None, before is not None
+
+    if before is None and not is_resolution_failure(before_error):
+        # Same trap as above, and worse: the branch below reads a missing
+        # baseline as "the package needs constraints" and skips the
+        # build-impact refusal on the strength of it. If the unconstrained
+        # resolve merely fell over, that claim is unfounded and the guard would
+        # be disabled for nothing. Report it as unverifiable instead.
+        print(
+            f"warning: could not establish a baseline -- resolving {spec} "
+            f"without the file failed for a reason that is not a resolution "
+            f"conflict, so there is nothing to compare against and no way to "
+            f"tell whether these pins change how anything is built. Confirm "
+            f"with a real build:\n"
+            f"  hack/build-locally.sh -c <file> '{spec}'\n"
+            f"fromager said:\n{before_error}",
+            file=sys.stderr,
+        )
+        return None, None, False
 
     if before is None:
         # No baseline to diff against, because there is no unconstrained build:
@@ -432,6 +502,7 @@ def render(
     full: bool,
     effects: list[str] | None = None,
     resolved_unconstrained: bool = True,
+    unverified: bool = False,
 ) -> str:
     scope = "full resolution" if full else "not-newest dependencies only"
     lines = [
@@ -440,6 +511,17 @@ def render(
         f"# Generated by hack/generate-constraints.py ({scope}).",
         f"# {len(pins)} of {total} resolved packages pinned.",
     ]
+    if unverified:
+        # Say it in the file, not only on stderr: whoever reviews this later
+        # sees the pins, not the terminal they were generated in.
+        lines += [
+            "#",
+            "# NOT VERIFIED. The check could not run -- fromager failed for a",
+            "# reason that was not a resolution conflict -- so nothing here says",
+            "# these pins work, and the build-impact guard did not run either.",
+            "# Confirm with a real build before relying on it:",
+            f"#   hack/build-locally.sh -c <this file> '{spec}'",
+        ]
     if effects is not None:
         # Record the measured effect, not just the pins. A reviewer can see at a
         # glance which versions this file actually moves, which is not obvious
@@ -525,18 +607,22 @@ def main() -> None:
 
     if pins and not args.no_verify:
         benign, build_impact, resolved_unconstrained = verify_pins(
-            args.requirement, image, content, pins
+            args.requirement, image, content, pins, args.full
         )
+        unverified = benign is None
+        benign = benign or []
+        build_impact = build_impact or []
         for line in benign + build_impact:
             print(f"  {line}", file=sys.stderr)
-        if resolved_unconstrained and not benign and not build_impact:
+        unchanged = not benign and not build_impact
+        if not unverified and resolved_unconstrained and unchanged:
             print(
                 "warning: these pins change nothing -- fromager already resolves "
                 "to these versions on its own, so the file would have no effect. "
                 "The package probably does not need constraints.",
                 file=sys.stderr,
             )
-        if build_impact and not args.allow_build_impact:
+        if build_impact and not args.allow_build_impact:  # never when unverified
             sys.exit(
                 "\nThese pins change a dependency that is installed to build "
                 "other packages,\nso they change how those wheels are compiled, "
@@ -550,8 +636,9 @@ def main() -> None:
             pins,
             len(entries),
             args.full,
-            benign + build_impact,
+            None if unverified else benign + build_impact,
             resolved_unconstrained,
+            unverified,
         )
 
     if not pins:

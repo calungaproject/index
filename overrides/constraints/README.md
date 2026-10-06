@@ -55,14 +55,34 @@ which is the set that will drift.
 ## What a file is allowed to change
 
 `hack/generate-constraints.py` resolves the package twice, with and without the
-file, and records the result in the header. Read that header in review: it is
-what the pins actually do, which is not evident from the pin list.
+file, and records the result in the header. Read that header in review: it says
+what the pins actually do — or that nobody knows — and neither is evident from
+the pin list.
 
 Most files here will say *"Without this file the package does not resolve at
 all"* — that is the case constraints exist for, and the header then lists the
 versions the pins produce. Where the package does resolve unaided the header is
 a diff instead, and a diff of `(none)` means the file is dead weight: fromager
 already reaches those versions on its own.
+
+A third header is possible and means something quite different. **`NOT
+VERIFIED` says the check could not run at all** — fromager failed for a reason
+that was not a resolution conflict, so neither the pins nor the build-impact
+guard were tested. The pins may well be right; nothing here shows that they
+are. The known cause is the verification resolving with `--sdist-only`, which
+reads metadata from the sdist where a real build reads it from the wheel;
+`yandexcloud==0.410.0` fails the former and builds fine under the latter.
+
+**Do not merge a `NOT VERIFIED` file on the header alone.** Confirm it first,
+and say in the review that you did:
+
+```bash
+FILE=overrides/constraints/<package>-<version>.txt
+hack/build-locally.sh -c "$FILE" '<package>==<version>'
+```
+
+Nothing downstream enforces this — `identify-constraints` applies such a file
+exactly like any other — so the review is the only place it is caught.
 
 Pins are taken from pip's *install* closure, and an install dependency is never
 installed to build a wheel, so the usual pin cannot change how anything
