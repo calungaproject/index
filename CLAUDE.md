@@ -52,22 +52,15 @@ builder image and writes `overrides/constraints/<package>-<version>.txt`. By
 default it pins only the dependencies whose resolved version is not the newest
 on PyPI; `--full` pins the whole resolution.
 
-It then resolves twice more with fromager, with and without the generated file,
-and records the result in the file's header so review can see what the pins
-actually do. Usually the unconstrained resolve fails — that is the whole reason
-the file exists — and the header lists the versions the pins produce. When it
-succeeds, the header is a diff. Either way each pin is labelled with whether the
-index already serves that version. A pin is refused without
-`--allow-build-impact` only when it both lands on a build-time edge
-(`build-system`, `build-backend`, `build-sdist`) *and* selects a version the
-index would have to build — a wheel already in the index is downloaded, so the
-pin cannot have shaped it. If the *constrained* resolve fails the pins are not
-the answer and the script stops.
+It then verifies the pins by resolving twice more. Those two resolutions
+dominate the run on a large graph; `--no-verify` skips them. `--help` lists
+the remaining flags. Requires `podman`, plus `yq` and `tkn` to read the
+pinned builder image unless `--builder-image` is given.
 
-Verification costs two full resolutions: seconds on a small graph, about five
-minutes each for a 700-node one like `google-adk`. `--no-verify` skips it. See
-`overrides/constraints/README.md` for the naming convention and why files are
-scoped per version.
+`overrides/constraints/README.md` is the reference for the naming convention,
+what each header state means, and the review rules — including that a file
+headed `NOT VERIFIED` must be confirmed with a local build before it is
+merged.
 
 ### Update a package version
 ```bash

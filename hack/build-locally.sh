@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 BUILDER_IMAGE_OVERRIDE=""
 PACKAGES=()
 CONSTRAINT_ARGS=()
@@ -20,14 +22,11 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: $1 requires an argument" >&2
                 exit 1
             fi
-            # Repeatable, matching CI. fromager declares --constraints-file
-            # with multiple=True from 0.84.0 on, so every file is read and the
-            # set is merged; a contradiction between two of them fails with
-            # fromager's own "Combined specifier ... is not satisfiable"
-            # instead of one file silently winning.
-            #
-            # Same transform the build-wheels Tekton step applies, so a path
-            # that works here works in overrides/constraints/ unchanged.
+            if [[ ! -f "${REPO_ROOT}/$2" ]]; then
+                echo "Error: constraints file not found: $2" >&2
+                echo "Paths are relative to the repository root." >&2
+                exit 1
+            fi
             CONSTRAINT_ARGS+=(-c "/var/workdir/source/$2")
             shift 2
             ;;
@@ -57,7 +56,6 @@ if [[ ${#PACKAGES[@]} -eq 0 ]]; then
     exit 1
 fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PIPELINE="${REPO_ROOT}/.tekton/build-pipeline.yaml"
 
 WHEEL_SERVER_URL="https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/"
