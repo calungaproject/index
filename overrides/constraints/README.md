@@ -13,6 +13,14 @@ dependency has since raised a floor that an older direct dependency caps — and
 the build fails at the end of bootstrap with a conflict rather than a compile
 error.
 
+It never backtracks because it never forms a resolution problem to backtrack
+within. Its resolvelib provider returns `[]` from `get_dependencies()`, so no
+transitive dependency enters the solve and nothing can conflict; each
+requirement is matched on its own and the highest candidate wins. Dependencies
+are discovered later, during bootstrap, once versions are already fixed. (This
+is deliberate and `resolver.py` says so: extending `get_dependencies()` would
+require switching to resolvelib's full `Resolver.resolve()`.)
+
 A constraints file hands fromager the answer a backtracking resolver would have
 found. Generate one with `hack/generate-constraints.py` rather than by hand.
 
@@ -103,17 +111,13 @@ header records both:
 
 The second condition is the one that bites, because the default pin set is
 exactly the dependencies whose version is *not* the newest — the versions least
-likely to be in the index already. Whatever a run builds first is the copy the
-index serves from then on, so a first build under a pin is permanent.
+likely to be in the index already. The index keeps the first wheel built for a
+given name and version and serves it to every later build; it is not rebuilt.
+So if a pin shaped how that wheel was compiled, every future build gets that
+wheel, and removing the pin afterwards changes nothing.
 
-The script refuses to write a file when both hold, unless you pass
-`--allow-build-impact`.
-
-Constraints are applied **by name across the whole build**, not just under the
-package that needed them. A pin here therefore also binds any other package
-built in the same run, including a top-level build of the pinned package itself
-— which is why files are kept per package and per version rather than merged
-into one index-wide list.
+The script refuses to write a file when a pin meets both conditions above,
+unless you pass `--allow-build-impact`.
 
 ## How they are applied
 

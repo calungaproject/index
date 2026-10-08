@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """Generate a fromager constraints file for a package version.
 
-fromager resolves each requirement to the newest matching version and never
-backtracks, so building a version that is not the newest can land in a
-dependency graph with no solution. pip does backtrack. This script asks pip for
-a resolution, then writes the subset of it that fromager would not have reached
-on its own.
+Asks pip for a resolution -- pip backtracks, fromager does not -- and writes
+the subset fromager would not have reached on its own. See
+overrides/constraints/README.md for why that is needed and why fromager
+never backtracks.
 
-By default that subset is the dependencies whose resolved version is *not* the
+This script resolves from wheel metadata rather than sdists. Wheel metadata
+declares the same dependencies without running each candidate's build
+backend, so one old sdist that a current backend refuses to process cannot
+abort the whole resolve.
+
+By default the subset is the dependencies whose resolved version is *not* the
 newest release on PyPI -- those are exactly the ones fromager would overshoot,
 and they are also the ones that will drift further as PyPI moves on. Use
 --full to pin the entire resolution instead.
 
-The resolution runs inside the builder image so that the Python version, the
-platform tags, and the index configuration match what CI will use.
+The resolution runs inside the builder image so that the Python version and the
+platform tags match what CI will use.
 
 Requires:
     podman  -- runs the builder image; always needed.
@@ -82,13 +86,10 @@ def capture(cmd: list[str]) -> str:
     `tkn bundle list` against a registry we cannot pull from says only
     "returned non-zero exit status 1" when the real answer is "unauthorized".
     """
-    # dangerous-subprocess-use-audit fires because cmd is a parameter rather
-    # than a literal. There is no shell: run() gets an argv list and defaults to
+    # Suppressed for semgrep, the SAST scanner CI runs: the rule flags cmd for
+    # being a parameter rather than a literal, but run() defaults to
     # shell=False, so every element is one argument and none can become a
-    # command. The only non-literal element any caller passes is the bundle
-    # reference, read out of .tekton/build-pipeline.yaml in this repo. The
-    # rule's suggested shlex quoting applies to shell strings and would corrupt
-    # an argv; shlex.join below is for the error message, not for execution.
+    # command.
     try:
         result = subprocess.run(  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
             cmd, capture_output=True, text=True, check=True
@@ -144,19 +145,10 @@ def resolve(spec: str, image: str) -> list[dict]:
     script = (
         "set -euo pipefail; "
         # install --dry-run --report, not download: only install reports the
-        # resolution without fetching it. --index-url because the image's
-        # default index is the internal wheel server, not PyPI. python3 -m pip
-        # because the image has no pip on PATH.
-        #
-        # Deliberately NOT --no-binary :all:. fromager builds from sdists, so
-        # resolving from sdists looks like the faithful choice, but it makes pip
-        # run each candidate's build backend just to read its metadata, and an
-        # old sdist that a current backend refuses to process then aborts the
-        # whole resolution -- google-adk 1.36.2 dies on a backtracked-to
-        # cloudpickle whose [tool.flit.metadata] table flit_core 4 rejects.
-        # That is a packaging failure, not a dependency conflict, and it tells
-        # us nothing about the graph. Wheel metadata declares the same
-        # dependencies and is what we want here.
+        # resolution without fetching it. --index-url pins the resolve to PyPI
+        # rather than relying on the image's default. python3 -m pip because
+        # the image has no pip on PATH. Not --no-binary :all: -- see the
+        # module docstring.
         "python3 -m pip install --quiet --ignore-installed "
         f"--index-url {PYPI_SIMPLE_URL} "
         f"--dry-run --report /tmp/report.json -- {shlex.quote(spec)} >/dev/null; "
@@ -227,13 +219,8 @@ def bootstrap_graph(
             mounts += ["-v", f"{constraints_path}:/tmp/constraints.txt:ro,Z"]
             prefix = ["--constraints-file", "/tmp/constraints.txt"]
 
-        # No shell is involved: podman is exec'd from an argv list, so nothing
-        # here is parsed by a shell and shlex would corrupt the arguments rather
-        # than protect them. spec sits after "--" so it cannot be read as a
-        # fromager option either, and both it and image come from this script's
-        # own argv or the digest pinned in the build pipeline, never from a
-        # remote source. The one call in this file that does use a shell,
-        # resolve(), quotes its interpolation.
+        # Suppressed for semgrep as in capture(): argv list, no shell. spec
+        # sits after "--" so fromager cannot read it as an option.
         result = subprocess.run(  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
             ["podman", "run", "--rm", *mounts, "-w", "/var/workdir", image, "fromager"]
             + ["--settings-file", "/usr/local/share/fromager/overrides/settings.yaml"]
@@ -321,11 +308,6 @@ def verify_pins(
         return None, None, before is not None
 
     if before is None and not is_resolution_failure(before_error):
-        # Same trap as above, and worse: the branch below reads a missing
-        # baseline as "the package needs constraints" and skips the
-        # build-impact refusal on the strength of it. If the unconstrained
-        # resolve merely fell over, that claim is unfounded and the guard would
-        # be disabled for nothing. Report it as unverifiable instead.
         print(
             f"warning: could not establish a baseline -- resolving {spec} "
             f"without the file failed for a reason that is not a resolution "
@@ -339,11 +321,6 @@ def verify_pins(
         return None, None, False
 
     if before is None:
-        # No baseline to diff against, because there is no unconstrained build:
-        # this is the case the whole mechanism exists for. Every pin is
-        # load-bearing by definition, so report the resolution the file produces
-        # and skip the build-impact refusal -- "changes how a wheel compiles" has
-        # no meaning when the alternative is that the wheel cannot be built.
         conflicts = [
             line for line in before_error.splitlines() if " ERROR " in line
         ]
@@ -363,6 +340,8 @@ def verify_pins(
             for name, (version, edges) in sorted(after.items())
             if name in pinned
         ]
+        # No build_impact: the refusal has no meaning when the alternative is
+        # that the package cannot be built at all.
         return effects, [], False
 
     benign, build_impact = [], []
@@ -377,11 +356,11 @@ def verify_pins(
         # disappearing build backend an install-only change.
         edges = old_edges | new_edges
         change = f"{old_version or 'absent'} -> {new_version or 'absent'}"
-        # Two things have to coincide for a pin to change a compiled artifact:
-        # the package must land in some build environment, and it must actually
-        # be built. A version the index already serves is downloaded, not
-        # rebuilt, so the pin had no say in how it was compiled -- refusing on
-        # the edge type alone would reject pins that cannot do any harm.
+        # Build-impacting only when both hold: the pin lands in a build
+        # environment, and it selects a version the index would have to build.
+        # The pin still decides which wheel is used either way, but one the
+        # index already serves is downloaded rather than compiled, so the pin
+        # cannot have shaped its build.
         disposition = build_disposition(name, new_version)
         line = (
             f"{name}: {change} [{disposition}] "
@@ -453,14 +432,18 @@ def build_disposition(name: str, version: str | None) -> str:
     return IN_INDEX if version in versions else WILL_BUILD
 
 
-def newest_on_pypi(name: str) -> str | None:
-    """Return the version PyPI reports as current, or None if unknown."""
+def newest_on_pypi(name: str) -> str:
+    """Return the version PyPI reports as current. Exits if PyPI is unreachable."""
     try:
         with urllib.request.urlopen(PYPI_JSON_URL.format(name=name), timeout=30) as f:
             return json.load(f)["info"]["version"]
     except (urllib.error.URLError, KeyError, json.JSONDecodeError, TimeoutError) as err:
-        print(f"warning: could not read {name} from PyPI: {err}", file=sys.stderr)
-        return None
+        sys.exit(
+            f"could not read {name} from PyPI: {err}\n\n"
+            "Cannot tell which dependencies are not newest, so the pin set "
+            "would be wrong. Retry when PyPI is reachable, or pass --full to "
+            "pin the whole resolution without consulting PyPI."
+        )
 
 
 def select_pins(entries: list[dict], target: str, full: bool) -> list[tuple[str, str]]:
@@ -486,11 +469,8 @@ def select_pins(entries: list[dict], target: str, full: bool) -> list[tuple[str,
         if full:
             pins.append((name, version))
             continue
-        # Pin when PyPI is unreachable too: an unnecessary pin costs nothing,
-        # whereas a missing one is the failure this file exists to prevent.
         # PyPI resolves the normalized name, so no need for the reported one.
-        newest = newest_on_pypi(name)
-        if newest != version:
+        if newest_on_pypi(name) != version:
             pins.append((name, version))
     return sorted(pins)
 
@@ -512,8 +492,6 @@ def render(
         f"# {len(pins)} of {total} resolved packages pinned.",
     ]
     if unverified:
-        # Say it in the file, not only on stderr: whoever reviews this later
-        # sees the pins, not the terminal they were generated in.
         lines += [
             "#",
             "# NOT VERIFIED. The check could not run -- fromager failed for a",
@@ -523,10 +501,6 @@ def render(
             f"#   hack/build-locally.sh -c <this file> '{spec}'",
         ]
     if effects is not None:
-        # Record the measured effect, not just the pins. A reviewer can see at a
-        # glance which versions this file actually moves, which is not obvious
-        # from the pin list: most pins match what would have been resolved
-        # anyway and change nothing.
         lines += ["#"]
         if resolved_unconstrained:
             lines += ["# Versions this changes, vs resolving without the file:"]

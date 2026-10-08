@@ -1,28 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-# Select the fromager constraint files that apply to the packages this build is
-# about to build.
-#
-# fromager resolves each requirement to the newest version that matches it and
-# never backtracks, and it resolves against today's PyPI. Building a version
-# that is not the newest therefore resolves its dependencies against a world
-# that moved on after that version was released, and the result can be a graph
-# with no solution. A constraints file hands fromager the answer a backtracking
-# resolver would have found. Generate one with hack/generate-constraints.py.
-#
-# Constraint files are keyed by package and version:
+# Select the fromager constraint files that apply to the packages this build
+# is about to build, looking each up as:
 #
 #   overrides/constraints/<package>-<version>.txt
 #
-# That is the only form, not merely the preferred one. The pins that make one
-# version resolve routinely contradict another version of the same package, so
-# an unversioned file would keep applying across bumps it was never checked
-# against, silently.
+# Emits a JSON array of repo-relative paths for CONSTRAINT_FILES. Packages
+# with no constraint file contribute nothing, so the common case is an empty
+# array and no behaviour change.
 #
-# Emits a JSON array of repo-relative paths for CONSTRAINT_FILES. Packages with
-# no constraint file contribute nothing, so the common case is an empty array
-# and no behaviour change.
+# See overrides/constraints/README.md for why these files exist and why the
+# version in the filename is required.
 
 PACKAGES_DIR="onboarded_packages"
 CONSTRAINTS_DIR="overrides/constraints"
@@ -83,10 +72,8 @@ while read -r entry; do
 
     ALL_PACKAGES="${ALL_PACKAGES}${name}"$'\n'
 
-    # An empty version means the package JSON was unreadable. There is no
-    # unversioned filename to fall back to, so the package simply gets no
-    # constraints -- the same outcome as having no file, which is the safe
-    # direction.
+    # An unreadable package JSON leaves version empty; with no unversioned
+    # filename to fall back to, the package just gets no constraints.
     matched=""
     if [[ -n "$version" ]]; then
         candidate="${CONSTRAINTS_DIR}/${name}-${version}.txt"
@@ -107,8 +94,8 @@ while read -r entry; do
             [[ -f "$other" ]] || continue
             # The glob also matches a longer package name sharing this prefix:
             # django- catches django-508-plugins-1.0.txt, whose suffix even
-            # starts with a digit. Require a whole version, which none of the
-            # 1567 onboarded packages spells with a hyphen.
+            # starts with a digit. Require a whole version, which no onboarded
+            # package spells with a hyphen.
             suffix="${other#"${CONSTRAINTS_DIR}/${name}-"}"
             suffix="${suffix%.txt}"
             [[ "$suffix" =~ ^[0-9] && "$suffix" != *-* ]] || continue
@@ -121,36 +108,11 @@ done <<< "$(parse_entries < "${PACKAGES_FILE}")"
 
 CONSTRAINT_FILES="$(echo -n "$CONSTRAINT_FILES" | sed '/^$/d')"
 
-# More than one file is fine. fromager declares --constraints-file with
-# multiple=True from 0.84.0 on, so build-wheels' one --constraints-file per file
-# is read in full and the files are merged into a single set. Releases before
-# 0.84.0 took the last flag and dropped the rest with no warning, which is why
-# this used to fail the build outright.
-#
-# Merging does not need a tie-break here either: fromager checks the merged set
-# for conflicts and refuses an unsatisfiable combination before building
-# anything, e.g.
-#
-#   ERROR Combined specifier '==45.0.7,==46.0.0' is not satisfiable
-#         (existing: cryptography==46.0.0, new: cryptography==45.0.7)
-#
-# which is the correct outcome: two packages needing one dependency at two
-# versions cannot share a build, and no winner would be right.
-
-# Merging is not scoping. build-wheels passes every --constraints-file to each
-# package's fromager run, and constraints bind by name across a whole
-# resolution, so a package with no file of its own is still resolved under
-# everyone else's pins, and nothing downstream reports that.
-#
-# generate-constraints.py cannot catch it either -- it resolves only the package
-# the file is named for, and has no idea a second one will be co-built. So this
-# warning is the only signal that exists.
-#
-# No exemption for build_extra. That field is for dependencies the parent does
-# not declare, so the extra is normally outside the parent's resolution and the
-# pins reaching it is a real change, not a formality. Those pairs also cannot be
-# split into separate commits, which makes the warning more useful there, not
-# less.
+# Warn when this build mixes packages that have a constraints file with
+# packages that do not. fromager applies every file to every package it
+# resolves, so the ones without a file are still pinned by the others'.
+# Nothing else reports this: generate-constraints.py only ever looks at the
+# one package its file is named for. See overrides/constraints/README.md.
 if [[ -n "${CONSTRAINT_FILES}" ]] && [[ -n "${CONSTRAINED_PACKAGES}" ]]; then
     constrained="$(printf '%s' "${CONSTRAINED_PACKAGES}" | sed '/^$/d')"
     others="$(printf '%s' "${ALL_PACKAGES}" | sed '/^$/d' \
