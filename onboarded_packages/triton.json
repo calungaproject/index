@@ -1,5 +1,7 @@
 {
     "version": "3.8.0",
+    "sdist_url": "git+https://github.com/triton-lang/triton",
+    "git_tag_template": "v{version}",
     "ignored_versions": [
         "0.4.0",
         "0.4.2",
