@@ -1,8 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 BUILDER_IMAGE_OVERRIDE=""
 PACKAGES=()
+CONSTRAINT_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -14,6 +17,19 @@ while [[ $# -gt 0 ]]; do
             BUILDER_IMAGE_OVERRIDE="$2"
             shift 2
             ;;
+        -c|--constraint)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: $1 requires an argument" >&2
+                exit 1
+            fi
+            if [[ ! -f "${REPO_ROOT}/$2" ]]; then
+                echo "Error: constraints file not found: $2" >&2
+                echo "Paths are relative to the repository root." >&2
+                exit 1
+            fi
+            CONSTRAINT_ARGS+=(-c "/var/workdir/source/$2")
+            shift 2
+            ;;
         *)
             PACKAGES+=("$1")
             shift
@@ -22,7 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#PACKAGES[@]} -eq 0 ]]; then
-    echo "Usage: $0 [--builder-image <image>] <package-spec> [<package-spec> ...]"
+    echo "Usage: $0 [--builder-image <image>] [-c <constraints-file>] <package-spec> [<package-spec> ...]"
     echo ""
     echo "Build from PyPI:"
     echo "  $0 typing_extensions==4.14.0"
@@ -31,12 +47,15 @@ if [[ ${#PACKAGES[@]} -eq 0 ]]; then
     echo "Build from git (for packages with sdist_url):"
     echo "  $0 'csaf-tool @ git+https://github.com/anthonyharrison/csaf@0.3.2'"
     echo ""
+    echo "Build with constraints (reproduces what CI applies from overrides/constraints/):"
+    echo "  $0 -c overrides/constraints/google-adk-1.36.2.txt google-adk==1.36.2"
+    echo ""
     echo "Options:"
     echo "  --builder-image <image>  Use a custom builder image instead of the one from the pipeline"
+    echo "  -c, --constraint <path>  Repo-relative constraints file (repeatable)"
     exit 1
 fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PIPELINE="${REPO_ROOT}/.tekton/build-pipeline.yaml"
 
 WHEEL_SERVER_URL="https://packages.redhat.com/api/pypi/public-trusted-libraries/main/simple/"
@@ -75,7 +94,8 @@ podman run -it --rm \
     -w /var/workdir \
     "${BUILDER_IMAGE}" \
     build-wheels "${PACKAGES[@]}" --cache-wheel-server-url "${WHEEL_SERVER_URL}" \
-    --package-settings-dir /var/workdir/source/overrides/settings
+    --package-settings-dir /var/workdir/source/overrides/settings \
+    ${CONSTRAINT_ARGS[@]+"${CONSTRAINT_ARGS[@]}"}
 
 echo "Collecting build files..."
 podman run --rm \

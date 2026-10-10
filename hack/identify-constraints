@@ -1,0 +1,149 @@
+#!/bin/bash
+set -euo pipefail
+
+# Select the fromager constraint files that apply to the packages this build
+# is about to build, looking each up as:
+#
+#   overrides/constraints/<package>-<version>.txt
+#
+# Emits a JSON array of repo-relative paths for CONSTRAINT_FILES. Packages
+# with no constraint file contribute nothing, so the common case is an empty
+# array and no behaviour change.
+#
+# See overrides/constraints/README.md for why these files exist and why the
+# version in the filename is required.
+
+PACKAGES_DIR="onboarded_packages"
+CONSTRAINTS_DIR="overrides/constraints"
+REVISION="$1"
+RESULT_FILE="$2"
+STATUS_FILE="$3"
+
+HACK_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "[DEBUG] REVISION=${REVISION} RESULT_FILE=${RESULT_FILE}" >&2
+
+# Ask identify-packages what is being built rather than re-deriving it here.
+# Duplicating the diff logic would let the two tasks disagree about the build
+# set, which would be silent: constraints would simply not be applied.
+PACKAGES_FILE="$(mktemp)"
+PACKAGES_STATUS_FILE="$(mktemp)"
+trap 'rm -f "${PACKAGES_FILE}" "${PACKAGES_STATUS_FILE}"' EXIT
+
+"${HACK_DIR}/identify-packages" "${REVISION}" "${PACKAGES_FILE}" "${PACKAGES_STATUS_FILE}" >&2
+
+# Split the JSON array identify-packages produced into one entry per line.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+parse_entries() {
+    sed -e 's/^\[//' -e 's/\]$//' | \
+        tr ',' '\n' | \
+        sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//' -e '/^$/d'
+}
+
+# Extract the "version" value from a JSON file using grep/sed.
+# jq not available in the Tekton SCRIPT_RUNNER_IMAGE
+extract_version() {
+    grep -o '"version": *"[^"]*"' | sed 's/.*"version": *"\([^"]*\)".*/\1/' || true
+}
+
+CONSTRAINT_FILES=""
+ALL_PACKAGES=""
+CONSTRAINED_PACKAGES=""
+while read -r entry; do
+    [[ -z "$entry" ]] && continue
+
+    # Entries are either "<name>==<version>" or, for packages carrying an
+    # sdist_url, "<name> @ <url>@<tag>".
+    if [[ "$entry" == *" @ "* ]]; then
+        name="${entry%% @*}"
+    else
+        name="${entry%%==*}"
+    fi
+
+    # Key on the onboarded version rather than on whatever trails the entry.
+    # For an sdist_url package the entry ends in a git tag, and git_tag_template
+    # means that tag need not equal the version ("v0.3.2" vs "0.3.2"). The JSON
+    # is the same source identify-packages read, so the two cannot disagree.
+    package_file="${PACKAGES_DIR}/${name}.json"
+    version=""
+    if [[ -f "$package_file" ]]; then
+        version="$(extract_version < "$package_file")"
+    fi
+
+    ALL_PACKAGES="${ALL_PACKAGES}${name}"$'\n'
+
+    # An unreadable package JSON leaves version empty; with no unversioned
+    # filename to fall back to, the package just gets no constraints.
+    matched=""
+    if [[ -n "$version" ]]; then
+        candidate="${CONSTRAINTS_DIR}/${name}-${version}.txt"
+        if [[ -f "$candidate" ]]; then
+            echo "Using constraints for ${name} ${version}: ${candidate}" >&2
+            CONSTRAINT_FILES="${CONSTRAINT_FILES}${candidate}"$'\n'
+            CONSTRAINED_PACKAGES="${CONSTRAINED_PACKAGES}${name}"$'\n'
+            matched="$candidate"
+        fi
+    fi
+
+    # A file named for a version this build is not building is invisible to the
+    # lookup above: no match, no constraints, build proceeds. That is the safe
+    # direction, but it is also what a file left behind by a version bump and a
+    # mistyped version both look like, so say something rather than nothing.
+    if [[ -z "$matched" ]]; then
+        for other in "${CONSTRAINTS_DIR}/${name}"-*.txt; do
+            [[ -f "$other" ]] || continue
+            # The glob also matches a longer package name sharing this prefix:
+            # django- catches django-508-plugins-1.0.txt, whose suffix even
+            # starts with a digit. Require a whole version, which no onboarded
+            # package spells with a hyphen.
+            suffix="${other#"${CONSTRAINTS_DIR}/${name}-"}"
+            suffix="${suffix%.txt}"
+            [[ "$suffix" =~ ^[0-9] && "$suffix" != *-* ]] || continue
+            echo "WARNING: ${other} exists, but ${name} is being built at" \
+                 "${version}, so it will not be applied. Rename it or" \
+                 "regenerate with hack/generate-constraints.py." >&2
+        done
+    fi
+done <<< "$(parse_entries < "${PACKAGES_FILE}")"
+
+CONSTRAINT_FILES="$(echo -n "$CONSTRAINT_FILES" | sed '/^$/d')"
+
+# Warn when this build mixes packages that have a constraints file with
+# packages that do not. fromager applies every file to every package it
+# resolves, so the ones without a file are still pinned by the others'.
+# Nothing else reports this: generate-constraints.py only ever looks at the
+# one package its file is named for. See overrides/constraints/README.md.
+if [[ -n "${CONSTRAINT_FILES}" ]] && [[ -n "${CONSTRAINED_PACKAGES}" ]]; then
+    constrained="$(printf '%s' "${CONSTRAINED_PACKAGES}" | sed '/^$/d')"
+    others="$(printf '%s' "${ALL_PACKAGES}" | sed '/^$/d' \
+        | grep -vFx -f <(printf '%s\n' "${constrained}") || true)"
+    if [[ -n "${others}" ]]; then
+        echo "WARNING: constraints were selected for:" >&2
+        while read -r c; do
+            [[ -n "$c" ]] && echo "  ${c}" >&2
+        done <<< "${constrained}"
+        echo "but this build also builds, with no file of their own:" >&2
+        while read -r other; do
+            [[ -n "$other" ]] && echo "  ${other}" >&2
+        done <<< "${others}"
+        echo "fromager applies every selected file to each of them too, so they" >&2
+        echo "resolve under these pins. That is not verified by anything." >&2
+    fi
+fi
+
+echo "Constraint files to apply:"
+echo "${CONSTRAINT_FILES}"
+
+CONSTRAINT_FILES_JSON='[]'
+if [[ -n "$CONSTRAINT_FILES" ]]; then
+    CONSTRAINT_FILES_JSON="$(<<< "${CONSTRAINT_FILES}" sed -e ':a;N;$!ba;s/\n/", "/g' | sed -e 's/^/\["/' -e 's/$/"\]/')"
+fi
+
+echo "${CONSTRAINT_FILES_JSON}" | tee "${RESULT_FILE}"
+
+if [[ "${CONSTRAINT_FILES_JSON}" == "[]" ]]; then
+    printf 'no-constraints' | tee "${STATUS_FILE}"
+else
+    printf 'has-constraints' | tee "${STATUS_FILE}"
+fi
+echo

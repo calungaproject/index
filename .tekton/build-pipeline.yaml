@@ -162,6 +162,33 @@ spec:
           - name: kind
             value: task
         resolver: bundles
+    # Separate task from identify-packages because run-script-oci-ta exposes only
+    # one array result (SCRIPT_OUTPUT_ARRAY), already used for the package list.
+    - name: identify-constraints
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: SCRIPT
+          # SCRIPT_OUTPUT_ARRAY and SCRIPT_OUTPUT env vars are injected by the run-script Task
+          value: |
+            ./hack/identify-constraints '$(params.prev-packages-ref)' "${SCRIPT_OUTPUT_ARRAY}" "${SCRIPT_OUTPUT}"
+        - name: SCRIPT_RUNNER_IMAGE
+          value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9:v1.19.3
+        - name: HERMETIC
+          value: "true"
+        - name: ociStorage
+          value: $(params.output-image).constraints
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
+      taskRef:
+        params:
+          - name: name
+            value: run-script-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:0e13a74cc02c945e7119ecd4cc0c9148e7591b50f87e415b212154caad0479c0
+          - name: kind
+            value: task
+        resolver: bundles
     - name: build-wheels
       params:
         # TODO: We probably want identify-packages to create a file, and we can use that as the
@@ -169,6 +196,10 @@ spec:
         # instead.
         - name: PACKAGES
           value: $(tasks.identify-packages.results.SCRIPT_OUTPUT_ARRAY)
+        # Empty unless overrides/constraints/ holds a file for a package being
+        # built, so this is inert until the first constraints file lands.
+        - name: CONSTRAINT_FILES
+          value: $(tasks.identify-constraints.results.SCRIPT_OUTPUT_ARRAY)
         - name: IMAGE
           value: $(params.output-image).wheel
         - name: IMAGE_EXPIRES_AFTER
