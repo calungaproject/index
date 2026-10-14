@@ -1,0 +1,6 @@
+{
+    "version": "1.0.post1",
+    "ignored_versions": [
+        "1.0rc1"
+    ]
+}
