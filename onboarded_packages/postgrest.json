@@ -1,5 +1,5 @@
 {
-  "version": "3.0.0a1",
+  "version": "2.33.0",
   "build_extra": [
     "httpx"
   ],
