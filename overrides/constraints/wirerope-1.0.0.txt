@@ -1,0 +1,24 @@
+# Constraints for wirerope==1.0.0
+#
+# Written by hand. hack/generate-constraints.py pins from pip's install
+# closure and reports "nothing to pin" here, because setuptools is a
+# build-system requirement rather than an install dependency.
+#
+# Without this file the build fails in get_requires_for_build_wheel:
+#
+#   File "<string>", line 2, in <module>
+#   ModuleNotFoundError: No module named 'pkg_resources'
+#
+# wirerope's setup.py imports pkg_resources to assert setuptools>=39.2.0;
+# setuptools removed pkg_resources in 82.0.0, so the assertion's own import
+# fails on anything newer. Its pyproject.toml asks for setuptools>=40.8.0
+# with no upper bound, so the newest always wins. 81.0.0 is the last release
+# that still ships pkg_resources.
+#
+# The index already serves setuptools 81.0.0, so this pin is downloaded
+# rather than built and cannot have shaped how anything was compiled.
+#
+# Verified with a real build on the pinned builder image
+# (plumbing-builder@sha256:8f85ac61): without -c the build fails as above;
+# with -c it exits 0 and produces wirerope-1.0.0-0-py2.py3-none-any.whl.
+setuptools==81.0.0
