@@ -1,5 +1,5 @@
 {
-  "version": "0.1.72",
+  "version": "0.1.74",
   "build_extra": [
     "wrapt"
   ],
