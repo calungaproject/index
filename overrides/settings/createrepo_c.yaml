@@ -1,0 +1,12 @@
+---
+# createrepo_c links libcurl via CMake's find_package(CURL). That resolves the
+# image's source-built curl 8.x under /opt/_internal/curl-4 but does NOT add an
+# rpath, and the builder image deliberately keeps that prefix off the default
+# library search path (see build-arrow.sh in the plumbing builder). The bare
+# libcurl.so.4 soname therefore resolves to UBI8's curl 7.61.1, and auditwheel
+# bundles the system curl together with its dependency closure: EOL OpenSSL
+# 1.1.1k, libssh, krb5, gnutls, ... Link with an rpath so the dynamic linker
+# and auditwheel both resolve our curl instead — the same trick build-arrow.sh
+# uses for pyarrow.
+env:
+  LDFLAGS: -Wl,--enable-new-dtags,-rpath,/opt/_internal/curl-4/lib
