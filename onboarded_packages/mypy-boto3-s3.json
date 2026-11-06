@@ -1,5 +1,5 @@
 {
-  "version": "1.43.0",
+  "version": "1.42.94",
   "build_extra": [
     "botocore",
     "boto3"
