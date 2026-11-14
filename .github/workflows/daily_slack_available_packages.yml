@@ -2,9 +2,9 @@ name: Daily Slack Available Packages
 
 on:
   workflow_dispatch:
-  schedule:
+  #schedule:
     # 9AM EST
-    - cron: '0 14 * * *'
+  #  - cron: '0 14 * * *'
 
 jobs:
   report-available-packages:
