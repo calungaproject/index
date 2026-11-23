@@ -24,7 +24,7 @@ jobs:
       - name: setup python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
-          python-version: '3.14'
+          python-version: '3.15'
       - name: install python deps
         run: pip install --require-hashes -r hack/requirements.txt
       - name: run the check-package-updates script
